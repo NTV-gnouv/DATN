@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+*.tsbuildinfo
+vite.config.js
+vite.config.d.ts
+
+# Environment & secrets
+.env
+.env.local
+.env.*.local
+
+# OS & IDE
+.DS_Store
+.vscode/
+.idea/
+
+# Cursor / AI tooling (không cần trong repo)
+.agents/
+
+# Logs & coverage
+*.log
+coverage/

@@ -1,0 +1,33 @@
+{
+  "name": "ShotVN",
+  "short_name": "ShotVN",
+  "description": "Nền tảng tạo landing page cho nhà sáng tạo.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fffcf0",
+  "theme_color": "#d4a800",
+  "icons": [
+    {
+      "src": "/img/icons/favicon/favicon_Androi.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/img/icons/favicon/favicon_App-icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/img/icons/favicon/favicon_ipad-iphone.svg",
+      "sizes": "180x180",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "/img/icons/favicon/favicon_Windows.svg",
+      "sizes": "270x270",
+      "type": "image/svg+xml"
+    }
+  ]
+}
