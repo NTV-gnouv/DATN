@@ -1,11 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
+import { DashboardBuilderLayout } from '@/components/layout/DashboardBuilderLayout';
 import { DashboardShell } from '@/components/layout/DashboardShell';
 import { RichTextEditor } from '@/components/editor/RichTextEditor';
 import { useAuth } from '@/hooks/useAuth';
 import { useBlockEditorRoute } from '@/hooks/useBlockEditorRoute';
 import type { TextPageBlock } from '@/models/content-blocks.model';
 import { createBlockId, getBlockId, upsertContentBlock } from '@/utils/page-blocks';
+import { buildPreviewPage } from '@/utils/preview-page';
 import { updatePage } from '@/services/pages.service';
 
 export default function TextBlockView() {
@@ -20,6 +22,21 @@ export default function TextBlockView() {
       setContent(activeBlock.content);
     }
   }, [activeBlock]);
+
+  const previewPage = useMemo(() => {
+    if (!page) {
+      return null;
+    }
+
+    const draftBlock: TextPageBlock = {
+      type: 'text',
+      id: blockId || activeBlock?.id || createBlockId('text'),
+      visible: activeBlock?.visible !== false,
+      content,
+    };
+
+    return buildPreviewPage(page, draftBlock);
+  }, [activeBlock?.id, activeBlock?.visible, blockId, content, page]);
 
   async function saveBlock() {
     if (!page?.id) {
@@ -62,7 +79,8 @@ export default function TextBlockView() {
 
   return (
     <DashboardShell onSignOut={signOut}>
-      <div className="content-block-editor">
+      <DashboardBuilderLayout page={page} previewPage={previewPage} loading={loading} error={error}>
+        <div className="content-block-editor">
         <header className="content-block-editor-head">
           <div>
             <p className="eyebrow">Content Block</p>
@@ -82,7 +100,8 @@ export default function TextBlockView() {
 
         {notice ? <p className="notice-copy">{notice}</p> : null}
         {error ? <p className="field-error">{error}</p> : null}
-      </div>
+        </div>
+      </DashboardBuilderLayout>
     </DashboardShell>
   );
 }

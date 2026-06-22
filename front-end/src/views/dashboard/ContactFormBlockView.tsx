@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 
+import { DashboardBuilderLayout } from '@/components/layout/DashboardBuilderLayout';
 import { DashboardShell } from '@/components/layout/DashboardShell';
 import { useAuth } from '@/hooks/useAuth';
 import { loadSession } from '@/services/auth.service';
@@ -21,6 +22,7 @@ type FormField = ContactFormField;
 import type { ContactFormPageBlock } from '@/models/contact-form-block.model';
 import { isContactFormPageBlock } from '@/models/contact-form-block.model';
 import { createBlockId, findPageBlockById, getBlockId, upsertContentBlock } from '@/utils/page-blocks';
+import { buildPreviewPage } from '@/utils/preview-page';
 
 const FIELD_PRESETS: Array<{ type: FieldType; title: string }> = [
   { type: 'text', title: 'Văn bản một dòng' },
@@ -104,6 +106,26 @@ export default function ContactFormBlockView() {
     }
     return FIELD_PRESETS.filter((item) => item.title.toLowerCase().includes(keyword));
   }, [search]);
+
+  const previewPage = useMemo(() => {
+    if (!page) {
+      return null;
+    }
+
+    const draftBlock: ContactFormPageBlock & PageBlock = {
+      type: 'contact-form',
+      id: blockId || createBlockId('contact-form'),
+      visible: true,
+      formId: formId || `contact-form-${page.id}`,
+      title: formName,
+      submitLabel,
+      successMessage,
+      showFieldLabels,
+      fields,
+    };
+
+    return buildPreviewPage(page, draftBlock);
+  }, [blockId, fields, formId, formName, page, showFieldLabels, submitLabel, successMessage]);
 
   useEffect(() => {
     let cancelled = false;
@@ -271,7 +293,8 @@ export default function ContactFormBlockView() {
 
   return (
     <DashboardShell onSignOut={signOut}>
-      <div className="contact-form-block-layout">
+      <DashboardBuilderLayout page={page} previewPage={previewPage} loading={loading} error={error}>
+        <div className="contact-form-block-layout">
         <aside className="contact-form-block-sidebar">
           <div className="contact-form-block-tabs">
             <button
@@ -532,7 +555,8 @@ export default function ContactFormBlockView() {
             ) : null}
           </div>
         </section>
-      </div>
+        </div>
+      </DashboardBuilderLayout>
     </DashboardShell>
   );
 }

@@ -1,11 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { PlusIcon, TrashIcon, UserCircleIcon } from '@heroicons/react/24/outline';
 
+import { DashboardBuilderLayout } from '@/components/layout/DashboardBuilderLayout';
 import { DashboardShell } from '@/components/layout/DashboardShell';
 import { useAuth } from '@/hooks/useAuth';
 import { useBlockEditorRoute } from '@/hooks/useBlockEditorRoute';
 import type { ReviewBlockLayout, ReviewItem, ReviewPageBlock } from '@/models/content-blocks.model';
 import { createBlockId, upsertContentBlock } from '@/utils/page-blocks';
+import { buildPreviewPage } from '@/utils/preview-page';
 import { uploadMediaImage } from '@/services/media.service';
 import { updatePage } from '@/services/pages.service';
 
@@ -54,6 +56,24 @@ export default function ReviewBlockView() {
         : [createEmptyReview()],
     );
   }, [activeBlock]);
+
+  const previewPage = useMemo(() => {
+    if (!page) {
+      return null;
+    }
+
+    const draftBlock: ReviewPageBlock = {
+      type: 'review-block',
+      id: blockId || activeBlock?.id || createBlockId('review'),
+      visible: activeBlock?.visible !== false,
+      title: title.trim(),
+      subtitle: subtitle.trim(),
+      layout,
+      reviews: reviews.filter((item) => item.quote.trim()),
+    };
+
+    return buildPreviewPage(page, draftBlock);
+  }, [activeBlock?.id, activeBlock?.visible, blockId, layout, page, reviews, subtitle, title]);
 
   function updateReview(id: string, patch: Partial<ReviewItem>) {
     setReviews((current) => current.map((item) => (item.id === id ? { ...item, ...patch } : item)));
@@ -155,7 +175,8 @@ export default function ReviewBlockView() {
 
   return (
     <DashboardShell onSignOut={signOut}>
-      <div className="content-block-editor">
+      <DashboardBuilderLayout page={page} previewPage={previewPage} loading={loading} error={error}>
+        <div className="content-block-editor">
         <header className="content-block-editor-head">
           <div>
             <p className="eyebrow">Content Block</p>
@@ -303,7 +324,8 @@ export default function ReviewBlockView() {
 
         {notice ? <p className="field-success">{notice}</p> : null}
         {error ? <p className="field-error">{error}</p> : null}
-      </div>
+        </div>
+      </DashboardBuilderLayout>
     </DashboardShell>
   );
 }

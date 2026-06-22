@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowTopRightOnSquareIcon, EyeIcon, PencilSquareIcon, SparklesIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { PencilSquareIcon, SparklesIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { useParams, useSearchParams } from 'react-router-dom';
 
+import { SelectedDomainToolbar } from '@/components/dashboard/SelectedDomainToolbar';
+import { DashboardBuilderLayout } from '@/components/layout/DashboardBuilderLayout';
 import { DashboardShell } from '@/components/layout/DashboardShell';
-import { ContentBlockRenderer } from '@/components/blocks/ContentBlockRenderer';
-import { ContactFormBlockPreview, getContactFormBlockConfig } from '@/components/blocks/ContactFormBlockPreview';
 import { Card } from '@/components/ui/Card';
 import { useAuth } from '@/hooks/useAuth';
 import { EDITOR_REGISTRY } from '@/editor';
@@ -31,10 +31,7 @@ import { uploadMediaImage } from '@/services/media.service';
 import { listThemes, type ThemeManifest } from '@/services/themes.service';
 import { getSocialPlatformIcon } from '../../utils/social-icons';
 import { clampSocialIconSize } from '@/utils/social-icon-size';
-import { isRenderablePreviewBlock } from '@/utils/page-blocks';
-import { getThemeEffectsConfig } from '@/utils/theme-effects';
 import { getBodyStyle, getHeadingStyle, resolvePageTypography } from '@/utils/fonts';
-import { buildContactFormPreviewStyles } from '@/utils/contact-form-surface';
 import { resolveThemePreviewMetrics } from '@/utils/theme-preview-metrics';
 import { normalizeAvatarWidthPercent } from '@/utils/avatar-size';
 import {
@@ -44,7 +41,6 @@ import {
   normalizeDisplayNameSizePercent,
 } from '@/utils/display-name-size';
 import { getDefaultBlockId, getDefaultHeaderBlock, getDefaultThemeId } from '@/services/editor.service';
-import { buildPageBackgroundStyle } from '@/utils/page-background';
 import { AI_BACKGROUND_SUGGESTED_PROMPT, generateAiBackground } from '@/services/ai-background.service';
 
 function getSocialIconElement(platform: string, color: string, size: number = 18): string {
@@ -424,7 +420,6 @@ export default function PageEditorView({ pageId: pageIdProp }: PageEditorViewPro
     ? headerBlock.fields.socials.items.filter((item) => hasText(item.url) || hasText(item.iconUrl))
     : [];
   const editorSocialItems = headerBlock?.fields?.socials?.items ?? [];
-  const previewBlocks = (page?.blocks ?? []).filter((block) => isRenderablePreviewBlock(block, String(page?.title ?? '')));
 
   const effectiveProfile = isProfileEditorOpen && profileDraft ? profileDraft : headerBlock?.fields.profile;
   const avatarSize = normalizeAvatarWidthPercent(effectiveProfile?.avatarSize);
@@ -455,7 +450,6 @@ export default function PageEditorView({ pageId: pageIdProp }: PageEditorViewPro
     spread: 0,
     color: 'rgba(0, 0, 0, 0.18)',
   };
-  const previewBackgroundStyle = buildPageBackgroundStyle(pageBackground);
   const themeCards: ThemeManifest[] = themeCatalog.length
     ? themeCatalog
     : EDITOR_REGISTRY.themes.map((theme) => ({
@@ -502,8 +496,6 @@ export default function PageEditorView({ pageId: pageIdProp }: PageEditorViewPro
   );
   const reviewFontSize = previewMetrics.reviewFontSize;
   const avatarWidthPercent = previewMetrics.avatarWidthPercent;
-  const themeEffects = getThemeEffectsConfig(themeTokens);
-  const cardSurfaceStyle = themeEffects?.cardStyle ?? {};
 
   function applyFontPairing(pairing: FontPairing) {
     updateHeaderBlock((current) => ({
@@ -768,8 +760,47 @@ export default function PageEditorView({ pageId: pageIdProp }: PageEditorViewPro
 
   return (
     <DashboardShell onSignOut={signOut}>
-      <div className="editor-layout">
-        <div className="editor-left-pane">
+      <DashboardBuilderLayout
+        page={page}
+        headerBlock={headerBlock}
+        themeTokens={themeTokens}
+        domainToolbar={
+          <SelectedDomainToolbar
+            slug={slug}
+            editable={{
+              isEditing: isEditingSlug,
+              onChange: (value) => {
+                setSlug(value);
+                setSlugState('idle');
+              },
+              onStartEdit: () => {
+                setIsEditingSlug(true);
+                setSlugState('idle');
+              },
+              onBlur: async () => {
+                const normalizedSlug = normalizeSlug(slug);
+                setSlug(normalizedSlug);
+                await verifySlug(normalizedSlug);
+                setIsEditingSlug(false);
+              },
+              onKeyDown: (event) => {
+                if (event.key === 'Enter') {
+                  event.currentTarget.blur();
+                }
+
+                if (event.key === 'Escape') {
+                  const fallbackSlug = normalizeSlug(page?.slug ?? slug) || 'creator-page';
+                  setSlug(fallbackSlug);
+                  setSlugState('idle');
+                  setIsEditingSlug(false);
+                }
+              },
+            }}
+            onCopySuccess={(message) => setNotice(message)}
+            onCopyError={(message) => setEditorError(message)}
+          />
+        }
+      >
           <Card>
             <section className="editor-section">
               <p className="eyebrow">Profile</p>
@@ -1422,230 +1453,7 @@ export default function PageEditorView({ pageId: pageIdProp }: PageEditorViewPro
               />
             </section>
           </Card>
-        </div>
-
-        <aside className="editor-right-pane">
-          <div className="editor-right-pane-shell">
-            <div className="editor-domain-toolbar">
-              <div className="editor-domain-stack">
-                <p className="eyebrow">Selected domain</p>
-                <div className="editor-domain-control">
-                  <span className="editor-domain-prefix">/</span>
-                  {isEditingSlug ? (
-                    <input
-                      className="input editor-domain-input"
-                      value={slug}
-                      autoFocus
-                      onChange={(event) => {
-                        setSlug(event.target.value);
-                        setSlugState('idle');
-                      }}
-                      onBlur={async () => {
-                        const normalizedSlug = normalizeSlug(slug);
-                        setSlug(normalizedSlug);
-                        await verifySlug(normalizedSlug);
-                        setIsEditingSlug(false);
-                      }}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter') {
-                          event.currentTarget.blur();
-                        }
-
-                        if (event.key === 'Escape') {
-                          const fallbackSlug = normalizeSlug(page?.slug ?? slug) || 'creator-page';
-                          setSlug(fallbackSlug);
-                          setSlugState('idle');
-                          setIsEditingSlug(false);
-                        }
-                      }}
-                      aria-label="Chỉnh sửa slug"
-                    />
-                  ) : (
-                    <button
-                      type="button"
-                      className="editor-domain-slug"
-                      onClick={() => {
-                        setIsEditingSlug(true);
-                        setSlugState('idle');
-                      }}
-                      aria-label="Chỉnh sửa slug"
-                    >
-                      {normalizeSlug(slug) || 'creator-page'}
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              <div className="editor-preview-actions">
-                <button
-                  type="button"
-                  className="btn btn-secondary editor-quick-btn"
-                  aria-label="Chỉnh sửa slug"
-                  title="Chỉnh sửa slug"
-                  onClick={() => {
-                    setIsEditingSlug(true);
-                    setSlugState('idle');
-                  }}
-                >
-                  <PencilSquareIcon className="icon-18" aria-hidden="true" />
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-secondary editor-quick-btn"
-                  aria-label="Xem trang công khai"
-                  title="Xem trang công khai"
-                  onClick={() => {
-                    const targetSlug = normalizeSlug(slug) || page?.slug || 'preview';
-                    window.open(`/${targetSlug}`, '_blank');
-                  }}
-                >
-                  <EyeIcon className="icon-18" aria-hidden="true" />
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-dark editor-share-btn"
-                  aria-label="Sao chép liên kết"
-                  title="Sao chép liên kết"
-                  onClick={() => {
-                    const targetSlug = normalizeSlug(slug) || page?.slug || 'preview';
-                    const publicUrl = `${window.location.origin}/${targetSlug}`;
-                    void navigator.clipboard.writeText(publicUrl).then(
-                      () => {
-                        setNotice('✓ Đã sao chép liên kết chia sẻ');
-                      },
-                      () => {
-                        setEditorError('Không thể sao chép liên kết');
-                      },
-                    );
-                  }}
-                >
-                  <ArrowTopRightOnSquareIcon className="icon-18" aria-hidden="true" />
-                  Share
-                </button>
-              </div>
-            </div>
-
-            <div className="phone-preview">
-              {themeEffects?.css ? <style>{themeEffects.css}</style> : null}
-              <div
-                className={`phone-preview-screen mobile-theme-canvas${themeEffects?.className ? ` ${themeEffects.className}` : ''}`}
-                style={{
-                  ...previewBackgroundStyle,
-                  color: headerColor,
-                  fontFamily: pageTypography.bodyFontStack,
-                  lineHeight: pageTypography.lineHeight,
-                  ...previewMetrics.cssVars,
-                }}
-              >
-                <ProfileHeaderSection
-                  avatarUrl={avatarUrl}
-                  avatarDisplayStyle={avatarDisplayStyle}
-                  avatarWidthPercent={avatarWidthPercent}
-                  previewTitle={previewTitle}
-                  previewBio={previewBio}
-                  headerColor={headerColor}
-                  titleStyle={getHeadingStyle(pageTypography, previewMetrics.titleFontSize, headerColor)}
-                  bioStyle={getBodyStyle(pageTypography, previewMetrics.bioFontSize, headerColor)}
-                  socialItems={socialItems}
-                  socialIconSize={socialIconSize}
-                  socialLabelFontSize={previewMetrics.socialLabelFontSize}
-                  socialDisplayMode={headerBlock?.fields?.socials?.displayMode}
-                  alwaysShowAvatar
-                />
-
-                {previewBlocks.map((block, index) => {
-                  const typedBlock = block as Record<string, unknown>;
-                  if (String(typedBlock.type ?? '') === 'contact-form') {
-                    const formConfig = getContactFormBlockConfig(typedBlock);
-                    const formStyles = buildContactFormPreviewStyles({
-                      divWidth,
-                      contentBg,
-                      contentText,
-                      border,
-                      shadow,
-                      typography: pageTypography,
-                      reviewFontSize,
-                      cardTitleFontSize: previewMetrics.cardTitleFontSize,
-                      cardSurfaceStyle,
-                    });
-                    return (
-                      <ContactFormBlockPreview
-                        key={`contact-form-${index}`}
-                        className="landing-contact-form phone-content-card"
-                        title={formConfig.title}
-                        submitLabel={formConfig.submitLabel}
-                        fields={formConfig.fields}
-                        showFieldLabels={formConfig.showFieldLabels}
-                        buttonColor={buttonColor}
-                        contentText={contentText}
-                        titleStyle={formStyles.titleStyle}
-                        surfaceStyle={formStyles.surfaceStyle}
-                        onSubmit={(event) => event.preventDefault()}
-                      />
-                    );
-                  }
-
-                  if (['text', 'gallery', 'link-block', 'review-block'].includes(String(typedBlock.type ?? ''))) {
-                    return (
-                      <ContentBlockRenderer
-                        key={`${String(typedBlock.type)}-${index}`}
-                        block={typedBlock as PageBlock}
-                        index={index}
-                        context={{
-                          contentBg,
-                          contentText,
-                          buttonColor,
-                          divWidth,
-                          border,
-                          shadow,
-                          reviewFontSize,
-                          cardTitleFontSize: previewMetrics.cardTitleFontSize,
-                          displayFontStack: pageTypography.displayFontStack,
-                          bodyFontStack: pageTypography.bodyFontStack,
-                          cardSurfaceStyle,
-                        }}
-                      />
-                    );
-                  }
-
-                  const label = String(typedBlock.label ?? typedBlock.headline ?? '').trim();
-                  const detail = String(typedBlock.body ?? typedBlock.href ?? '').trim();
-                  const isLinkType = String(typedBlock.type ?? '').toLowerCase() === 'link';
-                  const buttonText = String(
-                    typedBlock.buttonText ?? typedBlock.buttonLabel ?? typedBlock.ctaText ?? typedBlock.ctaLabel ?? '',
-                  ).trim();
-
-                  return (
-                    <div
-                      key={`${String(typedBlock.type ?? 'block')}-${index}`}
-                      className={isLinkType ? 'phone-link-card' : 'phone-content-card'}
-                      style={{
-                        width: `${divWidth}%`,
-                        marginInline: 'auto',
-                        background: isLinkType ? socialBg : contentBg,
-                        color: isLinkType ? socialText : contentText,
-                        border: `${border.width}px ${border.style} ${border.color}`,
-                        borderRadius: `${border.radius}px`,
-                        boxShadow: shadow.enabled
-                          ? `${shadow.x}px ${shadow.y}px ${shadow.blur}px ${shadow.spread}px ${shadow.color}`
-                          : 'none',
-                      }}
-                    >
-                      {label ? <p style={{ fontSize: `${reviewFontSize}px` }}>{label}</p> : null}
-                      {detail ? <p style={{ fontSize: `${reviewFontSize}px` }}>{detail}</p> : null}
-                      {!isLinkType && hasText(buttonText) && hasText(buttonColor) ? (
-                        <button type="button" style={{ background: buttonColor }}>
-                          {buttonText}
-                        </button>
-                      ) : null}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        </aside>
-      </div>
+      </DashboardBuilderLayout>
 
       {notice || editorError ? (
         <div className={`editor-toast ${editorError ? 'is-error' : 'is-success'}`} role="status" aria-live="polite">

@@ -1290,6 +1290,19 @@ a {
 .editor-left-pane {
   display: grid;
   gap: 16px;
+  min-width: 0;
+}
+
+.editor-left-pane .content-block-editor,
+.editor-left-pane .contact-form-block-layout,
+.editor-left-pane .dashboard-blocks-page {
+  max-width: none;
+  margin: 0;
+  width: 100%;
+}
+
+.dashboard-builder-layout {
+  align-items: start;
 }
 
 .editor-stack {
@@ -4958,15 +4971,20 @@ a {
   top: 16px;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  padding: 16px 12px 20px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--panel);
-  height: 100%;
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  height: auto;
   min-height: 0;
-  overflow: hidden;
+  overflow: visible;
+  align-self: start;
+}
+
+.ai-chat-phone-pane .editor-right-pane-shell {
+  width: 100%;
 }
 
 .ai-chat-phone-pane .phone-preview {

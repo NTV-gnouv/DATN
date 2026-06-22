@@ -5,8 +5,8 @@ import { useNavigate } from 'react-router-dom';
 import { AiChatBubble } from '@/components/ai-chat/AiChatBubble';
 import { AiStylePicker } from '@/components/ai-chat/AiStylePicker';
 import { AiChatSocialForm, type SocialFormErrors, type SocialFormValues } from '@/components/ai-chat/AiChatSocialForm';
+import { DashboardPreviewPaneShell } from '@/components/dashboard/DashboardPreviewPane';
 import { DashboardShell } from '@/components/layout/DashboardShell';
-import { PhonePagePreview } from '@/components/preview/PhonePagePreview';
 import { Card } from '@/components/ui/Card';
 import { useAuth } from '@/hooks/useAuth';
 import { createChatMessage, type ChatRenderableMessage } from '@/hooks/useTypingText';
@@ -715,8 +715,7 @@ export default function AiChatOnboardingView() {
         </Card>
 
         <aside className="ai-chat-phone-pane">
-          <p className="eyebrow">Preview</p>
-          <PhonePagePreview
+          <DashboardPreviewPaneShell
             page={previewPage}
             headerBlock={styledPreview.headerBlock}
             themeTokens={styledPreview.themeTokens}

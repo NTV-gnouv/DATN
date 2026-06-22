@@ -1,11 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ArrowPathIcon, LinkIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 
+import { DashboardBuilderLayout } from '@/components/layout/DashboardBuilderLayout';
 import { DashboardShell } from '@/components/layout/DashboardShell';
 import { useAuth } from '@/hooks/useAuth';
 import { useBlockEditorRoute } from '@/hooks/useBlockEditorRoute';
 import type { LinkBlockLayout, LinkItem, LinkPageBlock } from '@/models/content-blocks.model';
 import { createBlockId, upsertContentBlock } from '@/utils/page-blocks';
+import { buildPreviewPage } from '@/utils/preview-page';
 import { fetchLinkPreview } from '@/services/link-preview.service';
 import { updatePage } from '@/services/pages.service';
 
@@ -42,6 +44,22 @@ export default function LinkBlockView() {
     setLayout(activeBlock.layout ?? 'classic');
     setLinks(Array.isArray(activeBlock.links) && activeBlock.links.length > 0 ? activeBlock.links : [createEmptyLink()]);
   }, [activeBlock]);
+
+  const previewPage = useMemo(() => {
+    if (!page) {
+      return null;
+    }
+
+    const draftBlock: LinkPageBlock = {
+      type: 'link-block',
+      id: blockId || activeBlock?.id || createBlockId('link'),
+      visible: activeBlock?.visible !== false,
+      layout,
+      links: links.filter((item) => item.url.trim()),
+    };
+
+    return buildPreviewPage(page, draftBlock);
+  }, [activeBlock?.id, activeBlock?.visible, blockId, layout, links, page]);
 
   function updateLink(id: string, patch: Partial<LinkItem>) {
     setLinks((current) => current.map((item) => (item.id === id ? { ...item, ...patch } : item)));
@@ -128,7 +146,8 @@ export default function LinkBlockView() {
 
   return (
     <DashboardShell onSignOut={signOut}>
-      <div className="content-block-editor">
+      <DashboardBuilderLayout page={page} previewPage={previewPage} loading={loading} error={error}>
+        <div className="content-block-editor">
         <header className="content-block-editor-head">
           <div>
             <p className="eyebrow">Content Block</p>
@@ -225,7 +244,8 @@ export default function LinkBlockView() {
 
         {notice ? <p className="field-success">{notice}</p> : null}
         {error ? <p className="field-error">{error}</p> : null}
-      </div>
+        </div>
+      </DashboardBuilderLayout>
     </DashboardShell>
   );
 }

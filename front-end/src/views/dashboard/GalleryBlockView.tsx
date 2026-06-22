@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Bars3Icon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 
+import { DashboardBuilderLayout } from '@/components/layout/DashboardBuilderLayout';
 import { DashboardShell } from '@/components/layout/DashboardShell';
 import { useAuth } from '@/hooks/useAuth';
 import { useBlockEditorRoute } from '@/hooks/useBlockEditorRoute';
@@ -19,6 +20,7 @@ import {
   normalizeGalleryBlock,
 } from '@/utils/gallery-block.utils';
 import { createBlockId, getBlockId, upsertContentBlock } from '@/utils/page-blocks';
+import { buildPreviewPage } from '@/utils/preview-page';
 import { uploadMediaImage } from '@/services/media.service';
 import { updatePage } from '@/services/pages.service';
 
@@ -70,6 +72,44 @@ export default function GalleryBlockView() {
     setShowMoreLabel(normalized.showMoreLabel ?? 'Xem thêm');
     setImages(normalized.images);
   }, [activeBlock]);
+
+  const previewPage = useMemo(() => {
+    if (!page) {
+      return null;
+    }
+
+    const draftBlock: GalleryPageBlock = {
+      type: 'gallery',
+      id: blockId || activeBlock?.id || createBlockId('gallery'),
+      visible: activeBlock?.visible !== false,
+      title,
+      subtitle,
+      layout,
+      appearance,
+      aspectRatio,
+      imageScale: clampGalleryImageScale(imageScale),
+      visibleCount,
+      showMoreLabel,
+      images,
+      displayMode: layout === 'carousel' ? 'slider' : 'grid',
+    };
+
+    return buildPreviewPage(page, draftBlock);
+  }, [
+    activeBlock?.id,
+    activeBlock?.visible,
+    appearance,
+    aspectRatio,
+    blockId,
+    imageScale,
+    images,
+    layout,
+    page,
+    showMoreLabel,
+    subtitle,
+    title,
+    visibleCount,
+  ]);
 
   async function handleUpload(files: FileList | null) {
     if (!files?.length) {
@@ -182,7 +222,8 @@ export default function GalleryBlockView() {
 
   return (
     <DashboardShell onSignOut={signOut}>
-      <div className="content-block-editor gallery-block-editor">
+      <DashboardBuilderLayout page={page} previewPage={previewPage} loading={loading} error={error}>
+        <div className="content-block-editor gallery-block-editor">
         <header className="content-block-editor-head">
           <div>
             <p className="eyebrow">Content Block</p>
@@ -392,7 +433,8 @@ export default function GalleryBlockView() {
 
         {notice ? <p className="field-success">{notice}</p> : null}
         {error ? <p className="field-error">{error}</p> : null}
-      </div>
+        </div>
+      </DashboardBuilderLayout>
     </DashboardShell>
   );
 }
