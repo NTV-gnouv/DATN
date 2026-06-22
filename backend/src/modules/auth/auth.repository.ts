@@ -32,11 +32,18 @@ export class AuthRepository {
       .find((user) => user.email === 'admin@shotvn.local');
     if (existing) {
       const passwordMatches = await compare('Admin@123', existing.passwordHash);
-      if (!passwordMatches) {
-        await this.databaseService.writeRecord(this.entityName, existing.email, {
-          ...existing,
-          passwordHash: hashSync('Admin@123', 10),
-        });
+      const nextAdmin: AuthUserRecord = {
+        ...existing,
+        role: 'admin',
+        onboardingCompleted: true,
+        ...(passwordMatches ? {} : { passwordHash: hashSync('Admin@123', 10) }),
+      };
+      if (
+        existing.role !== 'admin' ||
+        existing.onboardingCompleted !== true ||
+        !passwordMatches
+      ) {
+        await this.databaseService.writeRecord(this.entityName, existing.email, nextAdmin);
       }
       return;
     }
@@ -93,7 +100,7 @@ export class AuthRepository {
       name: data.name,
       role: data.role ?? 'creator',
       passwordHash: data.passwordHash,
-      onboardingCompleted: false,
+      onboardingCompleted: (data.role ?? 'creator') === 'admin',
     };
     await this.databaseService.writeRecord(this.entityName, user.email, user);
     return user;

@@ -142,6 +142,7 @@ export class DatabaseService implements OnModuleInit {
           email: 'admin@shotvn.local',
           name: 'System Admin',
           role: 'admin',
+          onboardingCompleted: true,
           passwordHash: hashSync('Admin@123', 10),
         },
       },
@@ -153,7 +154,7 @@ export class DatabaseService implements OnModuleInit {
       {
         entity: 'pages',
         recordId: 'p-demo',
-        payload: { id: 'p-demo', title: 'My Landing Page', slug: 'my-landing-page', status: 'draft' },
+        payload: { id: 'p-demo', title: 'My Landing Page', slug: 'my-landing-page', username: 'demo', status: 'draft' },
       },
       {
         entity: 'themes',

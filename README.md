@@ -31,12 +31,14 @@ DATN/
 ```bash
 cd backend
 npm install
-cp .env.example .env   # điền DB, JWT, API keys
-npm run db:import
+cp .env.example .env   # điền DB_PASS, JWT_SECRET, API keys
+npm run db:import      # tạo DB + schema + seed (cần MySQL đang chạy)
 npm run start:dev
 ```
 
 API docs: http://localhost:3000/api/docs
+
+**Lưu ý máy mới:** `db:import` tự tạo database `shotvn`. Backend khi chạy còn đảm bảo đủ bảng và nạp themes từ `backend/themes/`.
 
 ### Frontend
 
@@ -45,7 +47,7 @@ cd front-end
 npm install
 npm run dev
 ```
-
+    
 Mặc định frontend gọi API tại `http://localhost:3000/api`.
 
 ## Tài khoản test

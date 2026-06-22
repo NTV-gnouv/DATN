@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Import MySQL schema and seed using env vars (from .env if present)
+# Import MySQL database, schema và seed (đọc biến từ backend/.env)
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 ENV_FILE="$ROOT_DIR/.env"
 
@@ -15,7 +15,7 @@ fi
 DB_HOST="${DB_HOST:-127.0.0.1}"
 DB_PORT="${DB_PORT:-3306}"
 DB_USER="${DB_USER:-root}"
-DB_PASS="${DB_PASS:-}" 
+DB_PASS="${DB_PASS:-}"
 DB_NAME="${DB_NAME:-shotvn}"
 
 SCHEMA_SQL="$ROOT_DIR/database/mysql-schema.sql"
@@ -26,12 +26,21 @@ if ! command -v mysql >/dev/null 2>&1; then
   exit 1
 fi
 
+MYSQL_ARGS=(-h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER")
+if [ -n "$DB_PASS" ]; then
+  MYSQL_ARGS+=(-p"$DB_PASS")
+fi
+
+echo "Creating database ${DB_NAME} (if missing)..."
+mysql "${MYSQL_ARGS[@]}" -e "CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+
 echo "Importing schema into ${DB_USER}@${DB_HOST}:${DB_PORT}/${DB_NAME}"
-mysql -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" -p"$DB_PASS" "$DB_NAME" < "$SCHEMA_SQL"
+mysql "${MYSQL_ARGS[@]}" "$DB_NAME" < "$SCHEMA_SQL"
 echo "Schema import complete."
 
 echo "Importing seed data into ${DB_NAME}"
-mysql -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" -p"$DB_PASS" "$DB_NAME" < "$SEED_SQL"
+mysql "${MYSQL_ARGS[@]}" "$DB_NAME" < "$SEED_SQL"
 echo "Seed import complete."
 
 echo "All done."
+echo "Tip: chạy backend (npm run start:dev) để rescan themes/plugins từ thư mục themes/ và plugins/."

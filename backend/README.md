@@ -28,6 +28,10 @@ Cấu hình `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASS`, `DB_NAME` trong `.env`, 
 npm run db:import
 ```
 
+Chi tiết: [docs/database.md](./docs/database.md)
+
+**Lưu ý:** Chỉ cần MySQL đang chạy — script tự tạo database. Khi `npm run start:dev`, backend còn `ensureSchema()` + seed admin nếu thiếu.
+
 ## Tài khoản test
 
 - Email: `admin@shotvn.local`
