@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="200" viewBox="0 0 320 200" role="img" aria-label="Handrawn Cream theme preview">
+  <rect width="320" height="200" fill="#FFFAF5"/>
+  <rect x="28" y="32" width="264" height="136" rx="24" fill="#F4EDDF" stroke="#2B2418" stroke-width="2" stroke-dasharray="8 6"/>
+  <rect x="30" y="34" width="264" height="136" rx="24" fill="none" stroke="rgba(43,36,24,0.35)" stroke-width="2" transform="translate(3 3)"/>
+  <circle cx="160" cy="72" r="28" fill="#E8F9F4" stroke="#2B2418" stroke-width="2"/>
+  <rect x="72" y="118" width="176" height="12" rx="6" fill="#1DAD97" opacity="0.85"/>
+  <rect x="96" y="140" width="128" height="10" rx="5" fill="#4A3F2E" opacity="0.55"/>
+</svg>

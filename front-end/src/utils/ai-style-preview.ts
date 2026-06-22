@@ -1,3 +1,5 @@
+import type { CSSProperties } from 'react';
+
 import type { HeaderBlock } from '@/models/editor.model';
 import type { AiChatStyleOption } from '@/services/ai-chat.service';
 import { buildPageBackgroundStyle } from '@/utils/page-background';
@@ -86,4 +88,18 @@ export function getStyleOptionBlockShadow(option: AiChatStyleOption): string {
 export function getStyleOptionBlockBackground(option: AiChatStyleOption): string {
   const colorsPatch = (option.preview.headerPatch.colors ?? {}) as Record<string, unknown>;
   return String(colorsPatch.contentBlockBackground ?? '#ffffff');
+}
+
+export function getStyleOptionBlockBorder(option: AiChatStyleOption): CSSProperties {
+  const divLayoutPatch = (option.preview.headerPatch.divLayout ?? {}) as Record<string, unknown>;
+  const border = divLayoutPatch.border as
+    | { width?: number; style?: string; color?: string; radius?: number }
+    | undefined;
+  if (!border || !border.width) {
+    return {};
+  }
+  return {
+    border: `${border.width}px ${border.style ?? 'solid'} ${border.color ?? '#cbd5e1'}`,
+    borderRadius: `${border.radius ?? 8}px`,
+  };
 }

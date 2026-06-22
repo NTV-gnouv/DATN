@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 
 import { PageAnalyticsDateRangeFilter } from '@/components/analytics/PageAnalyticsDateRangeFilter';
 import { PageAnalyticsOverviewPanel } from '@/components/analytics/PageAnalyticsOverviewPanel';
+import { PlatformInsightsChat } from '@/components/analytics/PlatformInsightsChat';
 import { Card } from '@/components/ui/Card';
 import { DashboardShell } from '@/components/layout/DashboardShell';
 import { useAuth } from '@/hooks/useAuth';
@@ -64,7 +65,7 @@ export default function AnalyticsOverviewView() {
 
   return (
     <DashboardShell onSignOut={signOut}>
-      <div className="analytics-page">
+      <div className="analytics-page analytics-page-wide">
         <header className="analytics-page-header">
           <p className="eyebrow">Analytics</p>
           <h2>Tổng quan landing page</h2>
@@ -74,16 +75,28 @@ export default function AnalyticsOverviewView() {
           </p>
         </header>
 
-        <Card className="analytics-detail-card">
-          <PageAnalyticsDateRangeFilter value={dateRange} onChange={setDateRange} />
+        <div className="analytics-overview-layout">
+          <Card className="analytics-detail-card analytics-overview-main">
+            <PageAnalyticsDateRangeFilter value={dateRange} onChange={setDateRange} />
 
-          {loading || fetching ? <p className="muted-copy">Đang tải dữ liệu...</p> : null}
-          {error ? <p className="field-error">{error}</p> : null}
-          {!loading && !fetching && overview ? <PageAnalyticsOverviewPanel data={overview} /> : null}
-          {!loading && !fetching && !overview && !error && isValidAnalyticsDateRange(dateRange.startDate, dateRange.endDate) ? (
-            <p className="muted-copy">Chưa có dữ liệu lượt xem. Hãy mở trang public để bắt đầu ghi nhận.</p>
-          ) : null}
-        </Card>
+            {loading || fetching ? <p className="muted-copy">Đang tải dữ liệu...</p> : null}
+            {error ? <p className="field-error">{error}</p> : null}
+            {!loading && !fetching && overview ? <PageAnalyticsOverviewPanel data={overview} /> : null}
+            {!loading && !fetching && !overview && !error && isValidAnalyticsDateRange(dateRange.startDate, dateRange.endDate) ? (
+              <p className="muted-copy">Chưa có dữ liệu lượt xem. Hãy mở trang public để bắt đầu ghi nhận.</p>
+            ) : null}
+          </Card>
+
+          <Card className="analytics-detail-card analytics-overview-chat-card">
+            <PlatformInsightsChat
+              key={`${page?.id ?? 'page'}-${dateRange.preset}-${dateRange.startDate}-${dateRange.endDate}`}
+              pageId={page?.id}
+              slug={page?.slug}
+              dateRange={dateRange}
+              disabled={loading || fetching}
+            />
+          </Card>
+        </div>
       </div>
     </DashboardShell>
   );

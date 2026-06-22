@@ -6,6 +6,7 @@ import { Public } from '@/shared/decorators/public.decorator';
 
 import { AnalyticsService } from './analytics.service';
 import { PageViewsService } from './page-views.service';
+import { PlatformInsightsChatService } from './platform-insights-chat.service';
 
 @ApiTags('Analytics')
 @ApiBearerAuth()
@@ -14,6 +15,7 @@ export class AnalyticsController {
   constructor(
     private readonly analyticsService: AnalyticsService,
     private readonly pageViewsService: PageViewsService,
+    private readonly platformInsightsChatService: PlatformInsightsChatService,
   ) {}
 
   @Post('page-views')
@@ -50,6 +52,40 @@ export class AnalyticsController {
   ) {
     const resolvedGranularity = granularity === 'hour' ? 'hour' : 'day';
     return this.pageViewsService.getOverview(pageId, slug, startDate, endDate, resolvedGranularity);
+  }
+
+  @Post('insights/chat')
+  @Public()
+  @ApiOperation({
+    summary: 'Platform insights chat',
+    description: 'Grounded analytics chat for landing page performance and conversion.',
+  })
+  chatPlatformInsights(@Body() body: Record<string, unknown>) {
+    const granularityRaw = String(body.granularity ?? 'day');
+    const granularity =
+      granularityRaw === 'hour' || granularityRaw === 'week' || granularityRaw === 'month'
+        ? granularityRaw
+        : 'day';
+
+    return this.platformInsightsChatService.chat({
+      pageId: String(body.pageId ?? ''),
+      slug: body.slug ? String(body.slug) : undefined,
+      startDate: body.startDate ? String(body.startDate) : undefined,
+      endDate: body.endDate ? String(body.endDate) : undefined,
+      granularity,
+      messages: Array.isArray(body.messages)
+        ? body.messages
+            .map((item) => {
+              const record = item as Record<string, unknown>;
+              const role = String(record.role ?? '') === 'assistant' ? 'assistant' : 'user';
+              return {
+                role: role as 'user' | 'assistant',
+                content: String(record.content ?? '').trim(),
+              };
+            })
+            .filter((item) => item.content)
+        : [],
+    });
   }
 
   @Get()

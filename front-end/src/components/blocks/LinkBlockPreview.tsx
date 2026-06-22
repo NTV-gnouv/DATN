@@ -17,6 +17,13 @@ type LinkBlockPreviewProps = {
   context: BlockRenderContext;
 };
 
+function linkTitleStyle(context: BlockRenderContext): React.CSSProperties {
+  return {
+    fontFamily: context.displayFontStack,
+    fontWeight: 700,
+  };
+}
+
 function LinkAnchor({
   link,
   className,
@@ -56,7 +63,7 @@ function ClassicLinks({ links, context }: { links: LinkItem[]; context: BlockRen
             <span className="content-link-classic-thumb is-placeholder" aria-hidden="true" />
           )}
           <div className="content-link-classic-copy">
-            {link.title?.trim() ? <strong>{link.title}</strong> : null}
+            {link.title?.trim() ? <strong style={linkTitleStyle(context)}>{link.title}</strong> : null}
             {link.description?.trim() ? <p>{link.description}</p> : null}
           </div>
         </LinkAnchor>
@@ -130,7 +137,7 @@ function CarouselLinks({ links, context }: { links: LinkItem[]; context: BlockRe
               <span className="content-link-carousel-media is-placeholder" aria-hidden="true" />
             )}
             <div className="content-link-carousel-copy">
-              {link.title?.trim() ? <strong>{link.title}</strong> : null}
+              {link.title?.trim() ? <strong style={linkTitleStyle(context)}>{link.title}</strong> : null}
               {link.description?.trim() ? <p>{link.description}</p> : null}
             </div>
           </LinkAnchor>
@@ -176,7 +183,7 @@ function ImageGridLinks({ links, context }: { links: LinkItem[]; context: BlockR
           )}
           <div className="content-link-image-grid-overlay" style={getBlockOverlayStyle(context)} />
           <div className="content-link-image-grid-copy">
-            {link.title?.trim() ? <strong>{link.title}</strong> : null}
+            {link.title?.trim() ? <strong style={linkTitleStyle(context)}>{link.title}</strong> : null}
             {link.description?.trim() ? <p>{link.description}</p> : null}
           </div>
         </LinkAnchor>
@@ -198,7 +205,7 @@ function CardLinks({ links, context }: { links: LinkItem[]; context: BlockRender
             <span className="content-link-card-media is-placeholder" aria-hidden="true" />
           )}
           <div className="content-link-card-copy">
-            {link.title?.trim() ? <strong>{link.title}</strong> : null}
+            {link.title?.trim() ? <strong style={linkTitleStyle(context)}>{link.title}</strong> : null}
             {link.description?.trim() ? <p>{link.description}</p> : null}
           </div>
         </LinkAnchor>

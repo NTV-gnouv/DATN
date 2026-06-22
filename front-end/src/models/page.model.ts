@@ -19,6 +19,7 @@ export type PageDraft = {
   title: string;
   slug: string;
   username: string;
+  ownerId?: string;
   template?: string;
   themeId?: string;
 };

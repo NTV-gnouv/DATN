@@ -65,7 +65,7 @@ export type HeaderBlockFields = {
   };
   socials: {
     iconSize: number;
-    displayMode: 'icon-only' | 'icon-and-name';
+    displayMode: 'icons' | 'buttons' | 'both' | 'icon-only';
     items: SocialItem[];
     customFaviconEnabled: boolean;
   };

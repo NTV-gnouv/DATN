@@ -8,9 +8,9 @@ import { useAuth } from '@/hooks/useAuth';
 
 export default function RegisterView() {
   const { handleRegister, loading, error } = useAuth();
-  const [name, setName] = useState('Creator One');
-  const [email, setEmail] = useState('creator@example.com');
-  const [password, setPassword] = useState('Creator@123');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
   return (
     <AuthShell

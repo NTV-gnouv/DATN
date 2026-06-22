@@ -58,7 +58,7 @@ export type HeaderBlockRecord = {
     };
     socials: {
       iconSize: number;
-      displayMode: 'icon-only' | 'icon-and-name';
+      displayMode: 'icons' | 'buttons' | 'both' | 'icon-only';
       items: Array<{
         platform: string;
         url: string;
@@ -116,8 +116,8 @@ export class BlocksRepository {
       fields: {
         profile: {
           avatarUrl: '',
-          displayName: 'Tên nhà sáng tạo',
-          bio: 'Tiểu sử ngắn của bạn',
+          displayName: '',
+          bio: '',
           avatarShape: 'circle',
           avatarDisplayStyle: 'circle',
           avatarSize: 32,
@@ -163,7 +163,7 @@ export class BlocksRepository {
         },
         socials: {
           iconSize: 24,
-          displayMode: 'icon-only',
+          displayMode: 'icons',
           items: this.socialPlatforms.map((platform) => ({
             platform,
             url: '',

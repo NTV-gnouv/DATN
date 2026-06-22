@@ -5,13 +5,15 @@ import { ContactFormBlockPreview, getContactFormBlockConfig } from '@/components
 import type { HeaderBlock, PageBackground } from '@/models/editor.model';
 import type { LandingPage, PageBlock } from '@/models/page.model';
 import { useGoogleFonts } from '@/hooks/useGoogleFonts';
-import { getBodyStyle, getHeadingStyle, resolvePageTypography } from '@/utils/fonts';
+import { getBodyStyle, getHeadingStyle, getThemeTypographyCssVars, resolvePageTypography } from '@/utils/fonts';
 import { clampSocialIconSize } from '@/utils/social-icon-size';
 import { isRenderablePreviewBlock } from '@/utils/page-blocks';
 import { getThemeEffectsConfig } from '@/utils/theme-effects';
 import { resolveThemePreviewMetrics } from '@/utils/theme-preview-metrics';
 import { buildPageBackgroundStyle } from '@/utils/page-background';
 import { buildContactFormPreviewStyles } from '@/utils/contact-form-surface';
+import { getBlockShellStyle } from '@/utils/block-render-context';
+import { buildSocialBlockStyleFromHeader } from '@/utils/social-surface';
 import { ProfileHeaderSection } from '@/components/profile/ProfileHeaderSection';
 import { resolveAvatarDisplayStyle } from '@/models/avatar-display.model';
 
@@ -117,6 +119,22 @@ export function PhonePagePreview({
   const avatarWidthPercent = previewMetrics.avatarWidthPercent;
   const themeEffects = getThemeEffectsConfig(themeTokens);
   const cardSurfaceStyle = themeEffects?.cardStyle ?? {};
+  const socialBlockStyle = useMemo(
+    () =>
+      buildSocialBlockStyleFromHeader(activeHeaderBlock?.fields ?? null, {
+        cardSurfaceStyle,
+        bodyFontStack: pageTypography.bodyFontStack,
+        labelFontSize: previewMetrics.socialLabelFontSize,
+        labelFontWeight: pageTypography.bodyWeight,
+      }),
+    [
+      activeHeaderBlock?.fields,
+      cardSurfaceStyle,
+      pageTypography.bodyFontStack,
+      pageTypography.bodyWeight,
+      previewMetrics.socialLabelFontSize,
+    ],
+  );
 
   return (
     <div className="phone-preview phone-review">
@@ -128,6 +146,7 @@ export function PhonePagePreview({
           color: headerColor,
           fontFamily: pageTypography.bodyFontStack,
           lineHeight: pageTypography.lineHeight,
+          ...getThemeTypographyCssVars(pageTypography),
           ...previewMetrics.cssVars,
         }}
       >
@@ -144,6 +163,7 @@ export function PhonePagePreview({
           socialIconSize={socialIconSize}
           socialLabelFontSize={previewMetrics.socialLabelFontSize}
           socialDisplayMode={activeHeaderBlock?.fields.socials.displayMode}
+          socialBlockStyle={socialBlockStyle}
         />
 
         {previewBlocks.map((block, index) => {
@@ -178,7 +198,7 @@ export function PhonePagePreview({
             );
           }
 
-          if (['text', 'gallery', 'link-block', 'review-block'].includes(String(typedBlock.type ?? ''))) {
+          if (['text', 'gallery', 'album-block', 'link-block', 'review-block'].includes(String(typedBlock.type ?? ''))) {
             return (
               <ContentBlockRenderer
                 key={`${String(typedBlock.type)}-${index}`}
@@ -210,8 +230,7 @@ export function PhonePagePreview({
               key={`${String(typedBlock.type ?? 'block')}-${index}`}
               className={isLinkType ? 'phone-link-card' : 'phone-content-card'}
               style={{
-                width: `${divWidth}%`,
-                marginInline: 'auto',
+                ...getBlockShellStyle(),
                 background: isLinkType ? socialBg : contentBg,
                 color: isLinkType ? socialText : contentText,
                 border: `${border.width}px ${border.style} ${border.color}`,
@@ -222,8 +241,16 @@ export function PhonePagePreview({
                 ...cardSurfaceStyle,
               }}
             >
-              {label ? <p style={{ fontSize: `${reviewFontSize}px` }}>{label}</p> : null}
-              {detail ? <p style={{ fontSize: `${reviewFontSize}px` }}>{detail}</p> : null}
+              {label ? (
+                <p style={{ fontSize: `${reviewFontSize}px`, fontFamily: pageTypography.displayFontStack, fontWeight: pageTypography.headingWeight }}>
+                  {label}
+                </p>
+              ) : null}
+              {detail ? (
+                <p style={{ fontSize: `${reviewFontSize}px`, fontFamily: pageTypography.bodyFontStack, lineHeight: pageTypography.lineHeight }}>
+                  {detail}
+                </p>
+              ) : null}
             </div>
           );
         })}

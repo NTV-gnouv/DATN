@@ -3,10 +3,11 @@ import {
   InboxStackIcon,
   LinkIcon,
   PhotoIcon,
+  RectangleStackIcon,
   StarIcon,
 } from '@heroicons/react/24/outline';
 
-export type AddableBlockType = 'text' | 'gallery' | 'link-block' | 'contact-form' | 'review-block';
+export type AddableBlockType = 'text' | 'gallery' | 'album-block' | 'link-block' | 'contact-form' | 'review-block';
 
 export type BlockCatalogItem = {
   type: AddableBlockType;
@@ -37,6 +38,13 @@ export const ADDABLE_BLOCK_CATALOG: BlockCatalogItem[] = [
     description: 'Hiển thị album ảnh dạng lưới hoặc carousel.',
     route: '/dashboard/block/gallery',
     Icon: PhotoIcon,
+  },
+  {
+    type: 'album-block',
+    title: 'Album ảnh',
+    description: 'Tạo danh mục album với tối đa 5 album, mỗi album 5 ảnh.',
+    route: '/dashboard/block/album',
+    Icon: RectangleStackIcon,
   },
   {
     type: 'link-block',

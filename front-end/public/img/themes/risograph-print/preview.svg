@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="200" viewBox="0 0 320 200" role="img" aria-label="Risograph Print theme preview">
+  <rect width="320" height="200" fill="#F3EEE4"/>
+  <rect x="28" y="32" width="264" height="136" fill="#FBF6EC" stroke="#E4E0D9"/>
+  <rect x="32" y="36" width="264" height="136" fill="none" stroke="#2C3FA7" opacity="0.35" transform="translate(4 4)"/>
+  <rect x="136" y="56" width="48" height="48" fill="#F237A1"/>
+  <rect x="72" y="122" width="176" height="12" fill="#2C3FA7" opacity="0.85"/>
+  <rect x="96" y="144" width="128" height="10" fill="#637EC2" opacity="0.75"/>
+</svg>

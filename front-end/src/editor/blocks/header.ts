@@ -93,7 +93,11 @@ export const HEADER_BLOCK_SCHEMA: HeaderBlockSchema = {
     { key: 'profile.avatarSize', label: 'Chiều ngang avatar (%)', type: 'number' },
     { key: 'profile.displayNameSize', label: 'Kích cỡ tên (%)', type: 'number' },
     { key: 'socials.iconSize', label: 'Kích thước icon mạng xã hội', type: 'number' },
-    { key: 'socials.displayMode', label: 'Kiểu hiển thị icon', type: 'select', options: [{ label: 'Chỉ icon', value: 'icon-only' }, { label: 'Icon + tên', value: 'icon-and-name' }] },
+    { key: 'socials.displayMode', label: 'Kiểu hiển thị icon', type: 'select', options: [
+      { label: 'Chỉ icon', value: 'icons' },
+      { label: 'Nút full-width', value: 'buttons' },
+      { label: 'Cả icon và nút', value: 'both' },
+    ] },
     { key: 'divLayout.widthPercent', label: 'Chiều ngang khối (%)', type: 'number' },
     { key: 'divLayout.border.width', label: 'Border width', type: 'number' },
     { key: 'divLayout.border.color', label: 'Border color', type: 'color' },

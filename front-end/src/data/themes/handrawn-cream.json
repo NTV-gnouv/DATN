@@ -1,0 +1,55 @@
+{
+  "id": "handrawn-cream",
+  "name": "Handrawn Cream",
+  "preview": "preview.svg",
+  "version": "1.0.0",
+  "description": "Giao diện phác thảo bút chì trên giấy kem — viền nét đứt, bóng graphite và accent teal (themeskill/SKILL 5).",
+  "themeTokens": {
+    "typography": {
+      "fontFamily": "Delicious Handrawn",
+      "displayFont": "Delicious Handrawn",
+      "bodyFont": "Elms Sans",
+      "headingWeight": 400,
+      "bodyWeight": 400,
+      "lineHeight": 1.7
+    },
+    "effects": {
+      "backgroundEffectClassName": "theme-surface-handrawn",
+      "backgroundEffectCss": "",
+      "interactionCss": ".theme-surface-handrawn .phone-content-card, .theme-surface-handrawn .content-link-item { transition: transform 150ms ease, box-shadow 150ms ease; } .theme-surface-handrawn .phone-content-card:hover, .theme-surface-handrawn .content-link-item:hover { transform: translate(-2px, -2px); box-shadow: 0 0 0 4px #f4eddf, 1px 1px 4px 2px rgba(43, 36, 24, 0.5) !important; }"
+    },
+    "review": { "fontSize": 16 }
+  },
+  "cssDefaults": {
+    "colors": {
+      "headerTextAndIcon": "#1F1B12",
+      "socialBlockBackground": "#F4EDDF",
+      "socialBlockText": "#4A3F2E",
+      "contentBlockBackground": "#F4EDDF",
+      "contentBlockText": "#4A3F2E",
+      "contentBlockButton": "#1DAD97"
+    },
+    "divLayout": {
+      "widthPercent": 92,
+      "border": { "width": 2, "style": "dashed", "color": "#2B2418", "radius": 24 },
+      "boxShadow": { "enabled": true, "x": 2, "y": 2, "blur": 4, "spread": 2, "color": "rgba(43, 36, 24, 0.5)" }
+    },
+    "typography": { "fontFamily": "Delicious Handrawn" }
+  },
+  "fields": [
+    { "key": "typography.fontFamily", "type": "font-select", "label": "Font chữ", "options": ["Delicious Handrawn", "Elms Sans", "Caveat", "Inter", "Roboto", "Poppins", "Noto Sans", "System"] },
+    { "key": "divLayout.widthPercent", "type": "number", "label": "Chiều ngang (%)" },
+    { "key": "divLayout.border.width", "type": "number", "label": "Chiều rộng border (px)" },
+    { "key": "divLayout.border.color", "type": "color", "label": "Màu border" },
+    { "key": "divLayout.border.radius", "type": "number", "label": "Border radius" },
+    { "key": "divLayout.boxShadow.enabled", "type": "boolean", "label": "Shadow mặc định theo theme" },
+    { "key": "colors.headerTextAndIcon", "type": "color", "label": "Tiêu đề & biểu tượng" },
+    { "key": "colors.socialBlockBackground", "type": "color", "label": "Nền khối social" },
+    { "key": "colors.socialBlockText", "type": "color", "label": "Chữ khối social" },
+    { "key": "colors.contentBlockBackground", "type": "color", "label": "Nền khối nội dung" },
+    { "key": "colors.contentBlockText", "type": "color", "label": "Chữ khối nội dung" },
+    { "key": "colors.contentBlockButton", "type": "color", "label": "Màu nút / accent" }
+  ],
+  "layout": "single-column",
+  "enabled": true
+}

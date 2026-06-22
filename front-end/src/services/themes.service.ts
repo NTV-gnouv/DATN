@@ -15,6 +15,7 @@ export type ThemeManifest = {
   preview?: string;
   description?: string;
   cssDefaults?: Record<string, unknown>;
+  themeTokens?: Record<string, unknown>;
   fields?: ThemeFieldDefinition[];
   layout?: string;
   sourcePath?: string;

@@ -3,6 +3,7 @@ import {
   getStyleOptionAvatarStyle,
   getStyleOptionBackgroundStyle,
   getStyleOptionBlockBackground,
+  getStyleOptionBlockBorder,
   getStyleOptionBlockShadow,
 } from '@/utils/ai-style-preview';
 
@@ -27,7 +28,9 @@ export function AiStylePicker({
 }: AiStylePickerProps) {
   return (
     <div className="ai-style-picker" role="listbox" aria-label="Chọn kiểu giao diện">
-      <p className="ai-style-picker-title">Chọn 1 trong 3 kiểu giao diện</p>
+      <p className="ai-style-picker-title">
+        Chọn 1 trong {options.length} phong cách — cuộn để xem thêm
+      </p>
       <div className="ai-style-picker-grid">
         {options.map((option) => {
           const isActive = selectedId === option.id;
@@ -36,6 +39,7 @@ export function AiStylePicker({
           const avatarStyle = getStyleOptionAvatarStyle(option);
           const blockShadow = getStyleOptionBlockShadow(option);
           const blockBackground = getStyleOptionBlockBackground(option);
+          const blockBorder = getStyleOptionBlockBorder(option);
 
           return (
             <button
@@ -55,7 +59,7 @@ export function AiStylePicker({
                 <div className={`ai-style-card-avatar is-style-${avatarStyle}`} aria-hidden="true" />
                 <div
                   className="ai-style-card-block"
-                  style={{ background: blockBackground, boxShadow: blockShadow }}
+                  style={{ background: blockBackground, boxShadow: blockShadow, ...blockBorder }}
                   aria-hidden="true"
                 />
               </div>

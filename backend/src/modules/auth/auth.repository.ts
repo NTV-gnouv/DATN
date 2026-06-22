@@ -8,6 +8,7 @@ type AuthUserRecord = {
   name: string;
   role: 'creator' | 'admin';
   passwordHash: string;
+  onboardingCompleted?: boolean;
 };
 
 type PasswordResetRecord = {
@@ -48,20 +49,41 @@ export class AuthRepository {
     });
   }
 
-  async findByEmail(email: string) {
+  private normalizeUser(user: AuthUserRecord): AuthUserRecord {
+    return user;
+  }
+
+  async findRawByEmail(email: string) {
     await this.ensureSeedAdmin();
     const records = await this.databaseService.readEntity(this.entityName);
     return (
       records
         .map((record) => record.data as AuthUserRecord)
-        .find((user) => user.email === email) ?? null
+        .find((item) => item.email === email) ?? null
     );
+  }
+
+  async findRawById(id: string) {
+    await this.ensureSeedAdmin();
+    const records = await this.databaseService.readEntity(this.entityName);
+    return records.map((record) => record.data as AuthUserRecord).find((item) => item.id === id) ?? null;
+  }
+
+  async findByEmail(email: string) {
+    await this.ensureSeedAdmin();
+    const records = await this.databaseService.readEntity(this.entityName);
+    const user =
+      records
+        .map((record) => record.data as AuthUserRecord)
+        .find((item) => item.email === email) ?? null;
+    return user ? this.normalizeUser(user) : null;
   }
 
   async findById(id: string) {
     await this.ensureSeedAdmin();
     const records = await this.databaseService.readEntity(this.entityName);
-    return records.map((record) => record.data as AuthUserRecord).find((user) => user.id === id) ?? null;
+    const user = records.map((record) => record.data as AuthUserRecord).find((item) => item.id === id) ?? null;
+    return user ? this.normalizeUser(user) : null;
   }
 
   async create(data: { email: string; name: string; passwordHash: string; role?: 'creator' | 'admin' }) {
@@ -71,6 +93,7 @@ export class AuthRepository {
       name: data.name,
       role: data.role ?? 'creator',
       passwordHash: data.passwordHash,
+      onboardingCompleted: false,
     };
     await this.databaseService.writeRecord(this.entityName, user.email, user);
     return user;
@@ -108,6 +131,17 @@ export class AuthRepository {
   async findPasswordResetToken(token: string): Promise<PasswordResetRecord | null> {
     const record = await this.databaseService.readRecord(this.passwordResetEntityName, token);
     return record ? (record as PasswordResetRecord) : null;
+  }
+
+  async completeOnboarding(userId: string): Promise<AuthUserRecord | null> {
+    const user = await this.findRawById(userId);
+    if (!user) {
+      return null;
+    }
+
+    const next: AuthUserRecord = { ...user, onboardingCompleted: true };
+    await this.databaseService.writeRecord(this.entityName, next.email, next);
+    return next;
   }
 
   async deletePasswordResetToken(token: string): Promise<void> {

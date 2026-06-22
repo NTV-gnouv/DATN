@@ -19,6 +19,7 @@ type ThemeManifest = {
   preview?: string;
   description?: string;
   cssDefaults?: Record<string, unknown>;
+  themeTokens?: Record<string, unknown>;
   fields?: ThemeFieldDefinition[];
   layout?: string;
 };
@@ -91,6 +92,7 @@ export class ThemeLoaderService {
           preview: parsed.preview,
           description: parsed.description,
           cssDefaults: parsed.cssDefaults,
+          themeTokens: parsed.themeTokens,
           fields: parsed.fields,
           layout: parsed.layout ?? 'default',
           sourcePath: fullPath,

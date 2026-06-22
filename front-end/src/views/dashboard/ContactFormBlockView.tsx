@@ -145,8 +145,11 @@ export default function ContactFormBlockView() {
             break;
           }
         }
-        if (!loadedPage) {
-          loadedPage = await getPageById('p-demo');
+        if (!loadedPage || loadedPage.status === 'missing') {
+          if (!cancelled) {
+            setPage(null);
+          }
+          return;
         }
 
         if (cancelled) {

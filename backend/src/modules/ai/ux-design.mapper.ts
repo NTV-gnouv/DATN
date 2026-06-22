@@ -4,6 +4,7 @@ import type {
   BackgroundEffect,
   BorderStyle,
   ContentBlockStyle,
+  DesignLanguage,
   ShadowStyle,
   SpacingScale,
   TypographyStyle,
@@ -12,6 +13,7 @@ import type {
   UxDesignProfile,
 } from '@/shared/types/ux-design.types';
 import { getFontPairing, inferFontPairingFromBrand, listFontPairingIds } from '@/shared/fonts/font-catalog';
+import { getAiSurfaceStyle } from '@/shared/style-presets/ai-surface-styles';
 
 function pickEnum<T extends string>(value: unknown, allowed: readonly T[], fallback: T): T {
   const normalized = String(value ?? '').trim() as T;
@@ -76,6 +78,8 @@ function resolveBorder(borderStyle: BorderStyle, contrastHex: string) {
   switch (borderStyle) {
     case 'none':
       return { width: 0, style: 'none' as const, radius: 0, color: contrastHex };
+    case 'dashed':
+      return { width: 2, style: 'dashed' as const, radius: 24, color: '#2B2418' };
     case 'sharp':
       return { width: 2, style: 'solid' as const, radius: 4, color: contrastHex };
     case 'brutal':
@@ -85,9 +89,19 @@ function resolveBorder(borderStyle: BorderStyle, contrastHex: string) {
   }
 }
 
-function resolveShadow(shadowStyle: ShadowStyle, accentHex: string) {
+function resolveShadow(shadowStyle: ShadowStyle, accentHex: string, contrastHex: string) {
   if (shadowStyle === 'none') {
     return { enabled: false, x: 0, y: 0, blur: 0, spread: 0, color: 'rgba(15, 23, 42, 0)' };
+  }
+  if (shadowStyle === 'offset') {
+    return {
+      enabled: true,
+      x: 4,
+      y: 4,
+      blur: 0,
+      spread: 0,
+      color: contrastHex === '#ffffff' || contrastHex === '#FFFFFF' ? '#111827' : contrastHex,
+    };
   }
   if (shadowStyle === 'glow') {
     return {
@@ -258,6 +272,40 @@ function buildAnimation(style: AnimationStyle, profileKey: string) {
   };
 }
 
+function resolveSolidCanvasColor(surfaceClass: string | undefined, primary: string): string {
+  switch (surfaceClass) {
+    case 'theme-surface-handrawn':
+      return '#FFFAF5';
+    case 'theme-surface-doodle':
+      return '#F9F6F0';
+    case 'theme-surface-win95':
+      return '#008081';
+    case 'theme-surface-riso':
+      return '#F3EEE4';
+    default:
+      return primary;
+  }
+}
+
+function resolveDesignLanguageLabel(language: DesignLanguage): string {
+  const labels: Record<DesignLanguage, string> = {
+    modern: 'Hiện đại',
+    editorial: 'Editorial',
+    'warm-organic': 'Ấm áp tự nhiên',
+    'handrawn-sketch': 'Phác thảo tay',
+    'doodle-sketch': 'Doodle Sketch',
+    'retro-pixel': 'Retro Pixel',
+    risograph: 'Risograph',
+    'neo-brutalism': 'Neo Brutalism',
+    glassmorphism: 'Glassmorphism',
+    minimalism: 'Tối giản',
+    cyberpunk: 'Cyberpunk',
+    dashboard: 'Dashboard',
+    'space-mission': 'Space Mission',
+  };
+  return labels[language] ?? 'Hiện đại';
+}
+
 function buildInteractionCss(hoverScale: number, transitionMs: number, focusRing: boolean, scopeClass: string): string {
   const focusRule = focusRing
     ? `.${scopeClass} .phone-content-card:focus-within,.${scopeClass} .phone-link-card:focus-within,.${scopeClass} .theme-interactive:focus-within{outline:2px solid currentColor;outline-offset:2px;}`
@@ -348,9 +396,23 @@ export function normalizeUxDesignProfile(raw: unknown, input: UxDesignInput): Ux
   const fontPairingId = pickEnum(payload.font_pairing_id, listFontPairingIds(), fallback.font_pairing_id);
   const pairing = getFontPairing(fontPairingId);
 
+  const designLanguages = [
+    'modern',
+    'editorial',
+    'warm-organic',
+    'handrawn-sketch',
+    'doodle-sketch',
+    'retro-pixel',
+    'risograph',
+    'neo-brutalism',
+    'glassmorphism',
+    'minimalism',
+  ] as const;
+  const resolvedLanguage = pickEnum(payload.design_language, designLanguages, fallback.design_language);
+
   return {
-    design_language: 'modern',
-    design_language_label: 'Hiện đại',
+    design_language: resolvedLanguage,
+    design_language_label: String(payload.design_language_label ?? resolveDesignLanguageLabel(resolvedLanguage)).slice(0, 80),
     color_mood: pickEnum(payload.color_mood, ['clean', 'vibrant', 'dark', 'warm', 'pastel'], fallback.color_mood),
     background_style: pickEnum(payload.background_style, ['solid', 'gradient', 'image'], 'image'),
     typography_style: typographyStyle,
@@ -361,8 +423,8 @@ export function normalizeUxDesignProfile(raw: unknown, input: UxDesignInput): Ux
     line_height: clampNumber(payload.line_height, 1.4, 1.7, pairing.lineHeight),
     font_weight_heading: clampNumber(payload.font_weight_heading, 400, 800, pairing.headingWeight),
     font_weight_body: clampNumber(payload.font_weight_body, 400, 500, pairing.bodyWeight),
-    border_style: pickEnum(payload.border_style, ['none', 'soft', 'sharp', 'brutal'], 'soft'),
-    shadow_style: pickEnum(payload.shadow_style, ['none', 'soft', 'strong', 'glow'], 'soft'),
+    border_style: pickEnum(payload.border_style, ['none', 'soft', 'sharp', 'brutal', 'dashed'], 'soft'),
+    shadow_style: pickEnum(payload.shadow_style, ['none', 'soft', 'strong', 'glow', 'offset'], 'soft'),
     animation_style: pickEnum(payload.animation_style, ['none', 'fade', 'float', 'pulse', 'gradient-shift'], 'fade'),
     layout_style: 'centered',
     width_percent: clampNumber(payload.width_percent, 92, 100, 100),
@@ -386,6 +448,7 @@ export function normalizeUxDesignProfile(raw: unknown, input: UxDesignInput): Ux
     ),
     style_preset_id: String(payload.style_preset_id ?? fallback.style_preset_id ?? '').slice(0, 40) || undefined,
     style_preset_label: String(payload.style_preset_label ?? fallback.style_preset_label ?? '').slice(0, 80) || undefined,
+    surface_class: String(payload.surface_class ?? '').trim() || undefined,
     gallery_layout: 'column',
     gallery_appearance: 'exposed',
     interaction: {
@@ -411,8 +474,13 @@ export function mapUxDesignToPage(
   const accent = brandInput.color_palette.secondary_2.hex;
   const contrast = brandInput.color_palette.contrast.hex;
 
-  const border = resolveBorder(ux.border_style, ux.border_style === 'brutal' ? contrast : hexToRgba(contrast, 0.35));
-  const shadow = resolveShadow(ux.shadow_style, accent);
+  const surfaceStyle = getAiSurfaceStyle(ux.surface_class);
+  const canvasSolid = resolveSolidCanvasColor(ux.surface_class, primary);
+  const border = resolveBorder(
+    ux.border_style,
+    ux.border_style === 'brutal' || ux.border_style === 'dashed' ? contrast : hexToRgba(contrast, 0.35),
+  );
+  const shadow = resolveShadow(ux.shadow_style, accent, contrast);
   const layout = resolveLayout(ux.width_percent);
   const spacing = resolveSpacing(ux.spacing_scale);
   const animation = buildAnimation(ux.animation_style, options.pageKey);
@@ -421,15 +489,24 @@ export function mapUxDesignToPage(
     secondary,
     accent,
   });
-  const interactionCss = buildInteractionCss(
+  const scopeClass = surfaceStyle?.className || animation.className;
+  const genericInteractionCss = buildInteractionCss(
     ux.interaction.hover_scale,
     ux.interaction.transition_ms,
     ux.interaction.focus_ring,
-    animation.className,
+    scopeClass,
   );
+  const interactionCss = [surfaceStyle?.interactionCss, genericInteractionCss].filter(Boolean).join('\n');
 
-  const headerText =
-    ux.background_style === 'solid' ? readableTextColor(primary) : ux.background_style === 'gradient' ? '#ffffff' : '#ffffff';
+  const headerText = surfaceStyle
+    ? ux.surface_class === 'theme-surface-win95'
+      ? '#000000'
+      : '#1F1B12'
+    : ux.background_style === 'solid'
+      ? readableTextColor(canvasSolid)
+      : ux.background_style === 'gradient'
+        ? '#ffffff'
+        : '#ffffff';
   const socialBg = ux.color_mood === 'vibrant' ? accent : secondary;
   const socialText = readableTextColor(socialBg);
   const blockColors = resolveContentBlockColors(ux.content_block_style ?? 'white', brandInput);
@@ -440,8 +517,8 @@ export function mapUxDesignToPage(
     ux.background_style === 'solid'
       ? {
           mode: 'solid' as const,
-          solid: primary,
-          gradient: { start: primary, end: secondary, type: 'linear' as const },
+          solid: canvasSolid,
+          gradient: { start: canvasSolid, end: secondary, type: 'linear' as const },
           imageUrl: '',
           overlayColor: '#000000',
           overlayOpacity: 0,
@@ -465,6 +542,11 @@ export function mapUxDesignToPage(
           };
 
   const pairing = getFontPairing(ux.font_pairing_id);
+  const displayFont = surfaceStyle?.displayFont ?? pairing.displayFont;
+  const bodyFont = surfaceStyle?.bodyFont ?? pairing.bodyFont;
+  const headingWeight = surfaceStyle?.headingWeight ?? ux.font_weight_heading;
+  const bodyWeight = surfaceStyle?.bodyWeight ?? ux.font_weight_body;
+  const lineHeight = surfaceStyle?.lineHeight ?? ux.line_height;
   const titleMultiplier = ux.visual_hierarchy.title_emphasis === 'high' ? 1.08 : ux.visual_hierarchy.title_emphasis === 'subtle' ? 0.96 : 1;
   const resolvedHeadingSize = Math.round(ux.heading_size * titleMultiplier);
 
@@ -472,6 +554,7 @@ export function mapUxDesignToPage(
     source: 'ai-ux-design',
     designLanguage: ux.design_language,
     designLanguageLabel: ux.design_language_label,
+    stylePresetId: ux.style_preset_id,
     fontPairingId: pairing.id,
     fontPairingLabel: pairing.label,
     designProfile: ux,
@@ -479,21 +562,23 @@ export function mapUxDesignToPage(
       primary,
       secondary,
       accent,
-      background: primary,
+      background: canvasSolid,
       text: contrast,
       textLight: contrast,
       border: border.color,
     },
     typography: {
-      fontFamily: pairing.bodyFont,
-      displayFontFamily: pairing.displayFont,
-      bodyFontFamily: pairing.bodyFont,
+      fontFamily: displayFont,
+      displayFont,
+      bodyFont,
+      displayFontFamily: displayFont,
+      bodyFontFamily: bodyFont,
       fontPairingId: pairing.id,
       headingSize: resolvedHeadingSize,
       bodySize: ux.body_size,
-      headingWeight: ux.font_weight_heading,
-      bodyWeight: ux.font_weight_body,
-      lineHeight: ux.line_height,
+      headingWeight,
+      bodyWeight,
+      lineHeight,
       headingLetterSpacing: pairing.headingLetterSpacing,
       headingTransform: pairing.headingTransform,
     },
@@ -515,7 +600,7 @@ export function mapUxDesignToPage(
       animationCss: animation.css,
       interactionCss,
       backgroundEffect: ux.background_effect ?? 'none',
-      backgroundEffectClassName: backgroundEffect.className,
+      backgroundEffectClassName: surfaceStyle?.className || backgroundEffect.className,
       backgroundEffectCss: backgroundEffect.css,
       glassmorphism: ux.content_block_style === 'glass',
       backdropBlur: ux.content_block_style === 'glass' ? '14px' : '0px',
@@ -541,17 +626,17 @@ export function mapUxDesignToPage(
       contentBlockButton: blockColors.contentButton,
     },
     typography: {
-      fontFamily: pairing.bodyFont,
-      displayFontFamily: pairing.displayFont,
-      bodyFontFamily: pairing.bodyFont,
+      fontFamily: displayFont,
+      displayFontFamily: displayFont,
+      bodyFontFamily: bodyFont,
       fontPairingId: pairing.id,
       fontSize: ux.body_size,
-      fontWeight: ux.font_weight_body,
+      fontWeight: bodyWeight,
       headingSize: resolvedHeadingSize,
-      headingWeight: ux.font_weight_heading,
+      headingWeight,
       headingLetterSpacing: pairing.headingLetterSpacing,
       headingTransform: pairing.headingTransform,
-      lineHeight: ux.line_height,
+      lineHeight,
     },
     divLayout: {
       widthPercent: layout.widthPercent,

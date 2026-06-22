@@ -4,7 +4,9 @@ import { compare, hash } from 'bcryptjs';
 import { randomUUID } from 'crypto';
 
 import { EmailService } from '../notifications/email.service';
+import { PagesService } from '../pages/pages.service';
 
+import { hasConfiguredThemeTokens } from './auth-onboarding.util';
 import { AuthRepository } from './auth.repository';
 
 type JwtPayload = {
@@ -13,13 +15,70 @@ type JwtPayload = {
   role: string;
 };
 
+type AuthUserRecord = {
+  id: string;
+  email: string;
+  name: string;
+  role: 'creator' | 'admin';
+  onboardingCompleted?: boolean;
+};
+
 @Injectable()
 export class AuthService {
   constructor(
     private readonly authRepository: AuthRepository,
     private readonly jwtService: JwtService,
     private readonly emailService: EmailService,
+    private readonly pagesService: PagesService,
   ) {}
+
+  private toPublicUser(user: AuthUserRecord, onboardingCompleted: boolean) {
+    return {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      name: user.name,
+      onboardingCompleted,
+    };
+  }
+
+  private async resolveOnboardingCompleted(user: AuthUserRecord): Promise<boolean> {
+    if (user.onboardingCompleted === true) {
+      return true;
+    }
+
+    const page = await this.pagesService.findForAccount({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+    });
+
+    if (!page?.id) {
+      return false;
+    }
+
+    const editorConfig = await this.pagesService.getEditorConfig(String(page.id));
+    const hasAiSetup = hasConfiguredThemeTokens(editorConfig?.themeTokens);
+
+    if (hasAiSetup) {
+      if (!user.onboardingCompleted) {
+        await this.authRepository.completeOnboarding(user.id);
+      }
+      return true;
+    }
+
+    return false;
+  }
+
+  async getUserProfile(userId: string) {
+    const user = await this.authRepository.findRawById(userId);
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    const onboardingCompleted = await this.resolveOnboardingCompleted(user);
+    return this.toPublicUser(user, onboardingCompleted);
+  }
 
   async login(email: string, password: string) {
     const user = await this.authRepository.findByEmail(email);
@@ -47,15 +106,12 @@ export class AuthService {
 
     await this.authRepository.saveRefreshToken(user.id, refreshToken);
 
+    const onboardingCompleted = await this.resolveOnboardingCompleted(user);
+
     return {
       accessToken,
       refreshToken,
-      user: {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-        name: user.name,
-      },
+      user: this.toPublicUser(user, onboardingCompleted),
     };
   }
 
@@ -68,12 +124,16 @@ export class AuthService {
     const passwordHash = await hash(password, 10);
     const user = await this.authRepository.create({ email, name, passwordHash });
 
-    return {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-    };
+    return this.toPublicUser(user, false);
+  }
+
+  async completeOnboarding(userId: string) {
+    const user = await this.authRepository.completeOnboarding(userId);
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    return this.toPublicUser(user, true);
   }
 
   async refresh(refreshToken: string) {
@@ -144,12 +204,7 @@ export class AuthService {
 
     return {
       success: true,
-      user: {
-        id: updated.id,
-        email: updated.email,
-        name: updated.name,
-        role: updated.role,
-      },
+      user: this.toPublicUser(updated, await this.resolveOnboardingCompleted(updated)),
     };
   }
 }

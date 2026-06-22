@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 
 import DashboardPage from './app/dashboard/page';
 import DashboardAiChatPage from './app/dashboard/ai-chat/page';
+import DashboardAlbumBlockPage from './app/dashboard/block/album/page';
 import DashboardContactFormBlockPage from './app/dashboard/block/contact-form/page';
 import DashboardGalleryBlockPage from './app/dashboard/block/gallery/page';
 import DashboardHeaderBlockPage from './app/dashboard/block/header/page';
@@ -11,7 +12,9 @@ import DashboardReviewBlockPage from './app/dashboard/block/review/page';
 import DashboardTextBlockPage from './app/dashboard/block/text/page';
 import DashboardAnalyticsContactFormPage from './app/dashboard/analytics/contact-form/page';
 import DashboardAnalyticsOverviewPage from './app/dashboard/analytics/overview/page';
-import DashboardNewPage from './app/dashboard/pages/new/page';
+import OnboardingChatPage from './app/onboarding/chat/page';
+import OnboardingDomainPage from './app/onboarding/domain/page';
+import { RequireOnboardingComplete, RequireOnboardingStep } from './components/auth/OnboardingGuards';
 import EditorPage from './app/editor/[pageId]/page';
 import ForgotPasswordPage from './app/forgot-password/page';
 import LoginPage from './app/login/page';
@@ -30,6 +33,14 @@ function RequireAuth({ children }: PropsWithChildren) {
   return children;
 }
 
+function AuthenticatedApp({ children }: PropsWithChildren) {
+  return (
+    <RequireAuth>
+      <RequireOnboardingComplete>{children}</RequireOnboardingComplete>
+    </RequireAuth>
+  );
+}
+
 export default function App() {
   return (
     <Routes>
@@ -39,101 +50,122 @@ export default function App() {
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route
-        path="/dashboard"
+        path="/onboarding/domain"
         element={
           <RequireAuth>
-            <DashboardPage />
+            <RequireOnboardingStep step="domain">
+              <OnboardingDomainPage />
+            </RequireOnboardingStep>
           </RequireAuth>
+        }
+      />
+      <Route
+        path="/onboarding/chat"
+        element={
+          <RequireAuth>
+            <RequireOnboardingStep step="chat">
+              <OnboardingChatPage />
+            </RequireOnboardingStep>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/dashboard"
+        element={
+          <AuthenticatedApp>
+            <DashboardPage />
+          </AuthenticatedApp>
         }
       />
       <Route
         path="/dashboard/ai-chat"
         element={
-          <RequireAuth>
+          <AuthenticatedApp>
             <DashboardAiChatPage />
-          </RequireAuth>
+          </AuthenticatedApp>
         }
       />
       <Route path="/dashboard/design" element={<Navigate to="/dashboard/block/header" replace />} />
       <Route
         path="/dashboard/block/header"
         element={
-          <RequireAuth>
+          <AuthenticatedApp>
             <DashboardHeaderBlockPage />
-          </RequireAuth>
+          </AuthenticatedApp>
         }
       />
       <Route
         path="/dashboard/block/contact-form"
         element={
-          <RequireAuth>
+          <AuthenticatedApp>
             <DashboardContactFormBlockPage />
-          </RequireAuth>
+          </AuthenticatedApp>
         }
       />
       <Route
         path="/dashboard/block/text"
         element={
-          <RequireAuth>
+          <AuthenticatedApp>
             <DashboardTextBlockPage />
-          </RequireAuth>
+          </AuthenticatedApp>
         }
       />
       <Route
         path="/dashboard/block/gallery"
         element={
-          <RequireAuth>
+          <AuthenticatedApp>
             <DashboardGalleryBlockPage />
-          </RequireAuth>
+          </AuthenticatedApp>
+        }
+      />
+      <Route
+        path="/dashboard/block/album"
+        element={
+          <AuthenticatedApp>
+            <DashboardAlbumBlockPage />
+          </AuthenticatedApp>
         }
       />
       <Route
         path="/dashboard/block/link"
         element={
-          <RequireAuth>
+          <AuthenticatedApp>
             <DashboardLinkBlockPage />
-          </RequireAuth>
+          </AuthenticatedApp>
         }
       />
       <Route
         path="/dashboard/block/review"
         element={
-          <RequireAuth>
+          <AuthenticatedApp>
             <DashboardReviewBlockPage />
-          </RequireAuth>
+          </AuthenticatedApp>
         }
       />
-      <Route
-        path="/dashboard/pages/new"
-        element={
-          <RequireAuth>
-            <DashboardNewPage />
-          </RequireAuth>
-        }
-      />
+      <Route path="/dashboard/pages/new" element={<Navigate to="/onboarding/domain" replace />} />
       <Route path="/dashboard/analytics" element={<Navigate to="/dashboard/analytics/overview" replace />} />
       <Route
         path="/dashboard/analytics/overview"
         element={
-          <RequireAuth>
+          <AuthenticatedApp>
             <DashboardAnalyticsOverviewPage />
-          </RequireAuth>
+          </AuthenticatedApp>
         }
       />
       <Route
         path="/dashboard/analytics/contact-form"
         element={
-          <RequireAuth>
+          <AuthenticatedApp>
             <DashboardAnalyticsContactFormPage />
-          </RequireAuth>
+          </AuthenticatedApp>
         }
       />
       <Route
         path="/editor/:pageId"
         element={
-          <RequireAuth>
+          <AuthenticatedApp>
             <EditorPage />
-          </RequireAuth>
+          </AuthenticatedApp>
         }
       />
       <Route path="/:slug" element={<PublicUserPage />} />

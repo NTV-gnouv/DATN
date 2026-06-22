@@ -5,6 +5,7 @@ export type AuthUser = {
   email: string;
   name: string;
   role: UserRole;
+  onboardingCompleted?: boolean;
 };
 
 export type AuthSession = {

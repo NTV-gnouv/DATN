@@ -15,6 +15,10 @@ export class CreatePageDto {
 
   @IsOptional()
   @IsString()
+  ownerId?: string;
+
+  @IsOptional()
+  @IsString()
   template?: string;
 
   @IsOptional()

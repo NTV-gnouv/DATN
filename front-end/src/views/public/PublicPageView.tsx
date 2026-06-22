@@ -7,13 +7,16 @@ import type { ContactFormPageBlock } from '@/models/contact-form-block.model';
 import { useGoogleFonts } from '@/hooks/useGoogleFonts';
 import { useThemePreviewMetrics } from '@/hooks/useThemePreviewMetrics';
 import { getPageBySlug, getPageEditorConfig } from '@/services/pages.service';
+import { listThemes } from '@/services/themes.service';
 import { trackPageView } from '@/services/page-analytics.service';
 import { submitContactForm, type ContactFormField } from '@/services/contact-forms.service';
 import { clampSocialIconSize } from '@/utils/social-icon-size';
 import { isRenderablePreviewBlock } from '@/utils/page-blocks';
 import { getThemeEffectsConfig } from '@/utils/theme-effects';
-import { getBodyStyle, getHeadingStyle, resolvePageTypography } from '@/utils/fonts';
+import { getBodyStyle, getHeadingStyle, getThemeTypographyCssVars, resolvePageTypography } from '@/utils/fonts';
+import { buildSocialBlockStyleFromHeader } from '@/utils/social-surface';
 import { buildContactFormPreviewStyles } from '@/utils/contact-form-surface';
+import { getBlockShellStyle } from '@/utils/block-render-context';
 import { ProfileHeaderSection } from '@/components/profile/ProfileHeaderSection';
 import { resolveAvatarDisplayStyle } from '@/models/avatar-display.model';
 import type { LandingPage, PageBlock } from '@/models/page.model';
@@ -131,7 +134,20 @@ export default function PublicPageView({ slug }: PublicPageViewProps) {
         if (loadedPage.id) {
           const config = await getPageEditorConfig(loadedPage.id);
           setHeaderBlock(config.headerBlock as HeaderBlock | null);
-          setThemeTokens((config.themeTokens as Record<string, unknown> | null | undefined) ?? null);
+
+          const resolvedThemeId = String(config.themeId ?? loadedPage.themeId ?? 'minimal');
+          const savedThemeTokens = config.themeTokens as Record<string, unknown> | null | undefined;
+          if (savedThemeTokens && Object.keys(savedThemeTokens).length > 0) {
+            setThemeTokens(savedThemeTokens);
+          } else {
+            const themes = await listThemes().catch(() => []);
+            const manifest = themes.find((item) => item.id === resolvedThemeId);
+            setThemeTokens(
+              manifest?.themeTokens && typeof manifest.themeTokens === 'object'
+                ? (manifest.themeTokens as Record<string, unknown>)
+                : null,
+            );
+          }
         }
       } catch (caughtError) {
         const error = caughtError instanceof Error ? caughtError.message : 'Không thể tải trang';
@@ -171,6 +187,24 @@ export default function PublicPageView({ slug }: PublicPageViewProps) {
     displayNameSize: headerBlock?.fields?.profile?.displayNameSize,
     socialIconSize: clampSocialIconSize(headerBlock?.fields?.socials?.iconSize),
   });
+  const themeEffects = getThemeEffectsConfig(themeTokens);
+  const cardSurfaceStyle = themeEffects?.cardStyle ?? {};
+  const socialBlockStyle = useMemo(
+    () =>
+      buildSocialBlockStyleFromHeader(headerBlock?.fields ?? null, {
+        cardSurfaceStyle,
+        bodyFontStack: pageTypography.bodyFontStack,
+        labelFontSize: previewMetrics.socialLabelFontSize,
+        labelFontWeight: pageTypography.bodyWeight,
+      }),
+    [
+      headerBlock?.fields,
+      cardSurfaceStyle,
+      pageTypography.bodyFontStack,
+      pageTypography.bodyWeight,
+      previewMetrics.socialLabelFontSize,
+    ],
+  );
 
   if (isLoading) {
     return (
@@ -226,8 +260,6 @@ export default function PublicPageView({ slug }: PublicPageViewProps) {
   };
   const previewBackgroundStyle = buildPageBackgroundStyle(pageBackground);
   const reviewFontSize = previewMetrics.reviewFontSize;
-  const themeEffects = getThemeEffectsConfig(themeTokens);
-  const cardSurfaceStyle = themeEffects?.cardStyle ?? {};
 
   function updateFormValue(formId: string, fieldId: string, value: unknown) {
     setFormValues((current) => ({
@@ -290,6 +322,7 @@ export default function PublicPageView({ slug }: PublicPageViewProps) {
             color: headerColor,
             fontFamily: pageTypography.bodyFontStack,
             lineHeight: pageTypography.lineHeight,
+            ...getThemeTypographyCssVars(pageTypography),
             ...previewMetrics.cssVars,
           }}
         >
@@ -306,18 +339,21 @@ export default function PublicPageView({ slug }: PublicPageViewProps) {
             socialIconSize={socialIconSize}
             socialLabelFontSize={previewMetrics.socialLabelFontSize}
             socialDisplayMode={headerBlock?.fields.socials.displayMode}
-            renderSocialIcon={(item, _index, iconNode) =>
-              iconNode ? (
+            socialBlockStyle={socialBlockStyle}
+            renderSocialLink={(item, _index, children) =>
+              item.url?.trim() ? (
                 <a
-                  href={item.url || '#'}
+                  href={item.url}
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={item.platform}
-                  style={{ display: 'inline-flex', alignItems: 'center', color: 'inherit', textDecoration: 'none' }}
+                  style={{ display: 'contents', color: 'inherit', textDecoration: 'none' }}
                 >
-                  {iconNode}
+                  {children}
                 </a>
-              ) : null
+              ) : (
+                children
+              )
             }
           />
 
@@ -365,7 +401,7 @@ export default function PublicPageView({ slug }: PublicPageViewProps) {
               );
             }
 
-            if (['text', 'gallery', 'link-block', 'review-block'].includes(String(typedBlock.type ?? ''))) {
+            if (['text', 'gallery', 'album-block', 'link-block', 'review-block'].includes(String(typedBlock.type ?? ''))) {
               return (
                 <ContentBlockRenderer
                   key={`${String(typedBlock.type)}-${index}`}
@@ -400,8 +436,7 @@ export default function PublicPageView({ slug }: PublicPageViewProps) {
                 key={`${String(typedBlock.type ?? 'block')}-${index}`}
                 className={isLinkType ? 'phone-link-card' : 'phone-content-card'}
                 style={{
-                  width: `${divWidth}%`,
-                  marginInline: 'auto',
+                  ...getBlockShellStyle(),
                   background: isLinkType ? socialBg : contentBg,
                   color: isLinkType ? socialText : contentText,
                   border: `${border.width}px ${border.style} ${border.color}`,
@@ -412,8 +447,16 @@ export default function PublicPageView({ slug }: PublicPageViewProps) {
                   ...cardSurfaceStyle,
                 }}
               >
-                {label ? <p style={{ fontSize: `${reviewFontSize}px` }}>{label}</p> : null}
-                {detail ? <p style={{ fontSize: `${reviewFontSize}px` }}>{detail}</p> : null}
+                {label ? (
+                  <p style={{ fontSize: `${reviewFontSize}px`, fontFamily: pageTypography.displayFontStack, fontWeight: pageTypography.headingWeight }}>
+                    {label}
+                  </p>
+                ) : null}
+                {detail ? (
+                  <p style={{ fontSize: `${reviewFontSize}px`, fontFamily: pageTypography.bodyFontStack, lineHeight: pageTypography.lineHeight }}>
+                    {detail}
+                  </p>
+                ) : null}
                 {!isLinkType && hasText(buttonText) && hasText(buttonColor) ? (
                   <button type="button" style={{ background: buttonColor }}>
                     {buttonText}

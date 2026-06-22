@@ -2,7 +2,7 @@ import type { BrandProfile } from '@/shared/types/brand-profile.types';
 import type { UxDesignProfile } from '@/shared/types/ux-design.types';
 import {
   buildUxProfileFromPreset,
-  UX_STYLE_PRESETS,
+  selectStylePresetsForProfile,
   type UxStyleOption,
 } from '@/shared/style-presets/ux-style-presets';
 
@@ -24,8 +24,9 @@ export function buildStyleOptionsFromProfile(
   options: { backgroundImageUrl?: string; pageKey: string; baseUx?: UxDesignProfile },
 ): UxStyleOption[] {
   const input = brandProfileToUxInput(profile);
+  const presets = selectStylePresetsForProfile(input);
 
-  return UX_STYLE_PRESETS.map((preset) => {
+  return presets.map((preset) => {
     const uxDesign = buildUxProfileFromPreset(preset, input, options.baseUx);
     const mapped = mapUxDesignToPage(uxDesign, input, {
       backgroundImageUrl: options.backgroundImageUrl,

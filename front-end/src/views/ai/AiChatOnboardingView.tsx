@@ -7,6 +7,7 @@ import { AiStylePicker } from '@/components/ai-chat/AiStylePicker';
 import { AiChatSocialForm, type SocialFormErrors, type SocialFormValues } from '@/components/ai-chat/AiChatSocialForm';
 import { DashboardPreviewPaneShell } from '@/components/dashboard/DashboardPreviewPane';
 import { DashboardShell } from '@/components/layout/DashboardShell';
+import { OnboardingShell } from '@/components/layout/OnboardingShell';
 import { Card } from '@/components/ui/Card';
 import { useAuth } from '@/hooks/useAuth';
 import { createChatMessage, type ChatRenderableMessage } from '@/hooks/useTypingText';
@@ -15,6 +16,7 @@ import type { LandingPage } from '@/models/page.model';
 import { loadSession } from '@/services/auth.service';
 import { getDefaultHeaderBlock } from '@/services/editor.service';
 import { getPageById, getPageByUsername, getPageEditorConfig } from '@/services/pages.service';
+import { clearOnboardingPageId, getOnboardingPageId } from '@/utils/onboarding';
 import {
   AI_CHAT_SUGGESTED_DESCRIPTION,
   applyAiChatStyle,
@@ -131,8 +133,9 @@ async function loadPreviewPage(pageId?: string, usernames: string[] = []) {
   };
 }
 
-export default function AiChatOnboardingView() {
-  const { signOut } = useAuth();
+export default function AiChatOnboardingView({ mode = 'dashboard' }: { mode?: 'dashboard' | 'onboarding' }) {
+  const isOnboarding = mode === 'onboarding';
+  const { signOut, finishOnboarding } = useAuth();
   const navigate = useNavigate();
   const authSession = loadSession();
   const [chatSession, setChatSession] = useState<AiChatSession | null>(null);
@@ -153,6 +156,7 @@ export default function AiChatOnboardingView() {
   const [socialPrefill, setSocialPrefill] = useState<SocialFormValues | undefined>();
   const [backing, setBacking] = useState(false);
   const [previewAvatarUrl, setPreviewAvatarUrl] = useState('');
+  const [draftPageId] = useState(() => (isOnboarding ? getOnboardingPageId() : ''));
   const [pageId, setPageId] = useState('');
   const [previewPage, setPreviewPage] = useState<LandingPage | null>(null);
   const [previewHeaderBlock, setPreviewHeaderBlock] = useState<HeaderBlock | null>(null);
@@ -166,7 +170,26 @@ export default function AiChatOnboardingView() {
   const [applyingStyle, setApplyingStyle] = useState(false);
   const [selectedStyleId, setSelectedStyleId] = useState('');
   const [hoveredStyleId, setHoveredStyleId] = useState('');
+  const [finishing, setFinishing] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+
+  async function handleFinishOnboarding() {
+    if (!pageId || finishing) {
+      return;
+    }
+
+    setFinishing(true);
+    setError('');
+    try {
+      clearOnboardingPageId();
+      await finishOnboarding();
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : 'Không thể hoàn tất thiết lập');
+      setFinishing(false);
+    }
+  }
+
+  const previewPageId = pageId || draftPageId;
 
   const username = useMemo(() => {
     const fromName = normalizeSlug(authSession?.user?.name || '');
@@ -254,7 +277,7 @@ export default function AiChatOnboardingView() {
       try {
         setPreviewLoading(true);
         setPreviewError('');
-        const loaded = await loadPreviewPage(pageId || undefined, accountUsernames);
+        const loaded = await loadPreviewPage(previewPageId || undefined, accountUsernames);
         if (cancelled) {
           return;
         }
@@ -276,7 +299,7 @@ export default function AiChatOnboardingView() {
     return () => {
       cancelled = true;
     };
-  }, [accountUsernames, pageId]);
+  }, [accountUsernames, previewPageId]);
 
   const previewDisplayName = chatSession?.answers?.name;
   const previewBio = chatSession?.answers?.description || chatSession?.answers?.occupation;
@@ -541,7 +564,14 @@ export default function AiChatOnboardingView() {
   }
 
   const showSuggestedDescription =
-    chatSession?.currentStep === 2 && inputType === 'text' && awaitingInput && !activeAnimatedId && !submitting && !generating && !stepTransitioning;
+    !isOnboarding &&
+    chatSession?.currentStep === 2 &&
+    inputType === 'text' &&
+    awaitingInput &&
+    !activeAnimatedId &&
+    !submitting &&
+    !generating &&
+    !stepTransitioning;
 
   const showSocialForm =
     inputType === 'socials' && awaitingInput && !generating && !loading && !stepTransitioning;
@@ -549,9 +579,11 @@ export default function AiChatOnboardingView() {
   const showTextComposer =
     inputType === 'text' && awaitingInput && !activeAnimatedId && !generating && !loading && !stepTransitioning;
 
+  const isLandingReady = Boolean(pageId);
+
   const canGoBack =
     Boolean(chatSession) &&
-    !pageId &&
+    !isLandingReady &&
     !generating &&
     !applyingStyle &&
     !awaitingStyleChoice &&
@@ -562,10 +594,9 @@ export default function AiChatOnboardingView() {
     !backing &&
     (canGenerate || (chatSession?.currentStep ?? 0) > 0);
 
-  return (
-    <DashboardShell onSignOut={signOut}>
-      <div className="ai-chat-layout">
-        <Card className="ai-chat-panel">
+  const chatContent = (
+    <div className={`ai-chat-layout${isOnboarding ? ' is-onboarding-only' : ''}`}>
+      <Card className="ai-chat-panel">
           <div className="ai-chat-header">
             <div className="ai-chat-header-icon">
               <SparklesIcon className="icon-20" aria-hidden="true" />
@@ -703,30 +734,61 @@ export default function AiChatOnboardingView() {
               </div>
             </form>
 
-            {pageId ? (
+            {isLandingReady ? (
               <div className="ai-chat-success">
-                <p>Landing page đã sẵn sàng.</p>
-                <button type="button" className="btn btn-dark" onClick={() => navigate(`/editor/${pageId}`)}>
-                  Mở editor
-                </button>
+                <p>{isOnboarding ? 'Giao diện đã sẵn sàng. Hoàn tất thiết lập để vào dashboard.' : 'Landing page đã sẵn sàng.'}</p>
+                {isOnboarding ? (
+                  <button
+                    type="button"
+                    className="btn btn-dark"
+                    onClick={() => void handleFinishOnboarding()}
+                    disabled={finishing}
+                  >
+                    {finishing ? 'Đang hoàn tất...' : 'Hoàn thành'}
+                  </button>
+                ) : (
+                  <button type="button" className="btn btn-dark" onClick={() => navigate(`/editor/${pageId}`)}>
+                    Mở editor
+                  </button>
+                )}
               </div>
             ) : null}
           </div>
         </Card>
 
-        <aside className="ai-chat-phone-pane">
-          <DashboardPreviewPaneShell
-            page={previewPage}
-            headerBlock={styledPreview.headerBlock}
-            themeTokens={styledPreview.themeTokens}
-            loading={previewLoading}
-            error={previewError}
-            displayNameOverride={previewDisplayName}
-            bioOverride={previewBio}
-            avatarOverride={previewAvatarOverride}
-          />
-        </aside>
+        {!isOnboarding ? (
+          <aside className="ai-chat-phone-pane">
+            <DashboardPreviewPaneShell
+              page={previewPage}
+              headerBlock={styledPreview.headerBlock}
+              themeTokens={styledPreview.themeTokens}
+              loading={previewLoading}
+              error={previewError}
+              displayNameOverride={previewDisplayName}
+              bioOverride={previewBio}
+              avatarOverride={previewAvatarOverride}
+            />
+          </aside>
+        ) : null}
       </div>
-    </DashboardShell>
   );
+
+  if (isOnboarding) {
+    return (
+      <OnboardingShell
+        step={isLandingReady ? 3 : 2}
+        title={isLandingReady ? 'Hoàn tất thiết lập' : 'Tạo giao diện bằng AI'}
+        subtitle={
+          isLandingReady
+            ? 'Trang của bạn đã được tạo. Bấm Hoàn thành để vào dashboard.'
+            : 'Trả lời từng bước trong khung chat — AI sẽ dựng giao diện cho trang của bạn.'
+        }
+        onSignOut={signOut}
+      >
+        {chatContent}
+      </OnboardingShell>
+    );
+  }
+
+  return <DashboardShell onSignOut={signOut}>{chatContent}</DashboardShell>;
 }

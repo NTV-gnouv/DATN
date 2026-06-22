@@ -2,6 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { ChevronDownIcon, TrashIcon } from '@heroicons/react/24/outline';
 
 import type { SocialItem } from '@/models/editor.model';
+import type { SocialDisplayMode } from '@/models/social-display.model';
+import { normalizeSocialDisplayMode } from '@/models/social-display.model';
+import { SocialDisplayModePicker } from '@/components/editor/SocialDisplayModePicker';
 import { clampSocialIconSize } from '@/utils/social-icon-size';
 import {
   addExtraSocialItem,
@@ -17,6 +20,7 @@ import {
   upsertSocialItem,
 } from '@/utils/social-editor-items';
 import { getSocialPlatformIcon } from '@/utils/social-icons';
+import type { SocialBlockStyleInput } from '@/utils/social-surface';
 
 const SOCIAL_PLATFORM_OPTIONS = [
   'TikTok',
@@ -41,6 +45,10 @@ const SOCIAL_PLATFORM_OPTIONS = [
 type SocialLinksEditorProps = {
   items: SocialItem[];
   socialIconSize: number;
+  displayMode: SocialDisplayMode | 'icon-only';
+  headerColor: string;
+  blockStyle: SocialBlockStyleInput;
+  onDisplayModeChange: (mode: SocialDisplayMode) => void;
   onIconSizeChange: (size: number) => void;
   onItemsChange: (items: SocialItem[]) => void;
 };
@@ -64,6 +72,10 @@ function detectSocialPlatform(value: string) {
 export function SocialLinksEditor({
   items,
   socialIconSize,
+  displayMode,
+  headerColor,
+  blockStyle,
+  onDisplayModeChange,
   onIconSizeChange,
   onItemsChange,
 }: SocialLinksEditorProps) {
@@ -120,6 +132,13 @@ export function SocialLinksEditor({
 
   return (
     <>
+      <SocialDisplayModePicker
+        value={normalizeSocialDisplayMode(displayMode)}
+        headerColor={headerColor}
+        blockStyle={blockStyle}
+        onChange={onDisplayModeChange}
+      />
+
       <div className="editor-social-icon-size">
         <p className="editor-modal-section-title">Kích thước icon</p>
         <div className="editor-avatar-size-row">

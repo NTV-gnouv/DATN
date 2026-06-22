@@ -7,13 +7,17 @@ export type DesignLanguage =
   | 'space-mission'
   | 'modern'
   | 'editorial'
-  | 'warm-organic';
+  | 'warm-organic'
+  | 'handrawn-sketch'
+  | 'retro-pixel'
+  | 'risograph'
+  | 'doodle-sketch';
 
 export type ColorMood = 'clean' | 'vibrant' | 'dark' | 'warm' | 'pastel';
 export type BackgroundStyle = 'solid' | 'gradient' | 'image';
 export type TypographyStyle = 'modern' | 'editorial' | 'friendly' | 'minimal' | 'bold';
-export type BorderStyle = 'none' | 'soft' | 'sharp' | 'brutal';
-export type ShadowStyle = 'none' | 'soft' | 'strong' | 'glow';
+export type BorderStyle = 'none' | 'soft' | 'sharp' | 'brutal' | 'dashed';
+export type ShadowStyle = 'none' | 'soft' | 'strong' | 'glow' | 'offset';
 export type AnimationStyle = 'none' | 'fade' | 'float' | 'pulse' | 'gradient-shift';
 export type LayoutStyle = 'centered' | 'compact' | 'split';
 export type SpacingScale = 'tight' | 'balanced' | 'airy';
@@ -49,6 +53,7 @@ export type UxDesignProfile = {
   content_block_style?: ContentBlockStyle;
   style_preset_id?: string;
   style_preset_label?: string;
+  surface_class?: string;
   gallery_layout: 'column' | 'carousel';
   gallery_appearance: 'exposed' | 'collapsible';
   interaction: {

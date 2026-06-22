@@ -7,8 +7,8 @@ import { DashboardBuilderLayout } from '@/components/layout/DashboardBuilderLayo
 import { DashboardShell } from '@/components/layout/DashboardShell';
 import { Card } from '@/components/ui/Card';
 import { useAuth } from '@/hooks/useAuth';
-import { EDITOR_REGISTRY } from '@/editor';
 import type { HeaderBlock, PageBackground, PageBackgroundGradientType } from '@/models/editor.model';
+import { normalizeSocialDisplayMode } from '@/models/social-display.model';
 import type { LandingPage, PageBlock } from '@/models/page.model';
 import { loadSession } from '@/services/auth.service';
 import {
@@ -33,6 +33,9 @@ import { getSocialPlatformIcon } from '../../utils/social-icons';
 import { clampSocialIconSize } from '@/utils/social-icon-size';
 import { getBodyStyle, getHeadingStyle, resolvePageTypography } from '@/utils/fonts';
 import { resolveThemePreviewMetrics } from '@/utils/theme-preview-metrics';
+import { getThemeEffectsConfig } from '@/utils/theme-effects';
+import { buildSocialBlockStyleFromHeader } from '@/utils/social-surface';
+import { mergeThemeCatalog } from '@/utils/theme-catalog';
 import { normalizeAvatarWidthPercent } from '@/utils/avatar-size';
 import {
   clampDisplayNameSizePercent,
@@ -92,6 +95,10 @@ function normalizeHeaderBlock(headerBlock: HeaderBlock): HeaderBlock {
         ...headerBlock.fields.colors,
         pageBackground: headerBlock.fields.colors.pageBackground ?? createDefaultPageBackground(),
       },
+      socials: {
+        ...headerBlock.fields.socials,
+        displayMode: normalizeSocialDisplayMode(headerBlock.fields.socials.displayMode),
+      },
     },
   };
 }
@@ -145,8 +152,11 @@ function mergeThemeDefaults(currentFields: Record<string, unknown>, defaults: Re
   return merged;
 }
 
-function defaultThemePreview(themeId: string) {
-  return `/img/themes/${themeId}/preview.png`;
+function defaultThemePreview(themeId: string, preview?: string) {
+  if (preview?.trim()) {
+    return `/img/themes/${themeId}/${preview.trim()}`;
+  }
+  return `/img/themes/${themeId}/preview.svg`;
 }
 
 type SlugState = 'idle' | 'checking' | 'available' | 'taken';
@@ -266,20 +276,25 @@ export default function PageEditorView({ pageId: pageIdProp }: PageEditorViewPro
         setPage(loadedPage);
         setSlug(loadedPage.slug ?? (normalizeSlug(loadedPage.title ?? pageId) || 'creator-page'));
         // Prefer explicit editor config -> page record themeId -> system default
-        setThemeId(config.themeId ?? loadedPage?.themeId ?? theme.defaultThemeId);
+        const resolvedThemeId = config.themeId ?? loadedPage?.themeId ?? theme.defaultThemeId;
+        setThemeId(resolvedThemeId);
+        let catalogItems: ThemeManifest[] = [];
         if (Array.isArray(themes)) {
-          const catalog = new Map<string, ThemeManifest>();
-          themes
-            .filter((item) => item?.enabled !== false)
-            .filter((item) => Array.isArray(item.fields) && item.fields.length > 0)
-            .forEach((item) => {
-              catalog.set(item.id, item);
-            });
-          setThemeCatalog(Array.from(catalog.values()));
+          catalogItems = mergeThemeCatalog(themes);
+          setThemeCatalog(catalogItems);
         } else {
-          setThemeCatalog([]);
+          setThemeCatalog(mergeThemeCatalog([]));
         }
-        setThemeTokens((config.themeTokens as Record<string, unknown> | null | undefined) ?? null);
+
+        const savedThemeTokens = config.themeTokens as Record<string, unknown> | null | undefined;
+        const manifestTokens = catalogItems.find((item) => item.id === resolvedThemeId)?.themeTokens;
+        setThemeTokens(
+          savedThemeTokens && Object.keys(savedThemeTokens).length > 0
+            ? savedThemeTokens
+            : manifestTokens && typeof manifestTokens === 'object'
+              ? (manifestTokens as Record<string, unknown>)
+              : null,
+        );
         setHeaderBlockId(config.headerBlockId ?? blockIdResponse.defaultBlockId);
         setHeaderBlock(normalizeHeaderBlock((config.headerBlock as HeaderBlock | null) ?? defaultHeaderBlock));
       } catch (caughtError) {
@@ -450,15 +465,7 @@ export default function PageEditorView({ pageId: pageIdProp }: PageEditorViewPro
     spread: 0,
     color: 'rgba(0, 0, 0, 0.18)',
   };
-  const themeCards: ThemeManifest[] = themeCatalog.length
-    ? themeCatalog
-    : EDITOR_REGISTRY.themes.map((theme) => ({
-        id: theme.id,
-        name: theme.name,
-        description: theme.description,
-        preview: 'preview.png',
-        version: '1.0.0',
-      }));
+  const themeCards: ThemeManifest[] = themeCatalog.length ? themeCatalog : mergeThemeCatalog([]);
   const selectedTheme = themeCards.find((theme) => theme.id === themeId) ?? themeCards[0];
   const selectedThemeFields = (selectedTheme?.fields ?? []).filter(
     (field) => field.key !== 'typography.fontFamily',
@@ -496,6 +503,23 @@ export default function PageEditorView({ pageId: pageIdProp }: PageEditorViewPro
   );
   const reviewFontSize = previewMetrics.reviewFontSize;
   const avatarWidthPercent = previewMetrics.avatarWidthPercent;
+  const themeEffects = getThemeEffectsConfig(themeTokens);
+  const socialBlockStyle = useMemo(
+    () =>
+      buildSocialBlockStyleFromHeader(headerBlock?.fields ?? null, {
+        cardSurfaceStyle: themeEffects?.cardStyle,
+        bodyFontStack: pageTypography.bodyFontStack,
+        labelFontSize: previewMetrics.socialLabelFontSize,
+        labelFontWeight: pageTypography.bodyWeight,
+      }),
+    [
+      headerBlock?.fields,
+      pageTypography.bodyFontStack,
+      pageTypography.bodyWeight,
+      previewMetrics.socialLabelFontSize,
+      themeEffects?.cardStyle,
+    ],
+  );
 
   function applyFontPairing(pairing: FontPairing) {
     updateHeaderBlock((current) => ({
@@ -631,15 +655,47 @@ export default function PageEditorView({ pageId: pageIdProp }: PageEditorViewPro
 
   function handleThemeSelect(nextTheme: ThemeManifest) {
     setThemeId(nextTheme.id);
+    if (nextTheme.themeTokens && typeof nextTheme.themeTokens === 'object') {
+      setThemeTokens(nextTheme.themeTokens as Record<string, unknown>);
+    }
+
     const defaults = nextTheme.cssDefaults as Record<string, unknown> | undefined;
     if (!defaults) {
       return;
     }
 
-    updateHeaderBlock((current) => ({
-      ...current,
-      fields: mergeThemeDefaults(current.fields as unknown as Record<string, unknown>, defaults) as HeaderBlock['fields'],
-    }));
+    updateHeaderBlock((current) => {
+      const merged = mergeThemeDefaults(
+        current.fields as unknown as Record<string, unknown>,
+        defaults,
+      ) as HeaderBlock['fields'];
+
+      const typographyDefaults = defaults.typography as Record<string, unknown> | undefined;
+      const tokenTypography =
+        nextTheme.themeTokens &&
+        typeof nextTheme.themeTokens === 'object' &&
+        nextTheme.themeTokens.typography &&
+        typeof nextTheme.themeTokens.typography === 'object'
+          ? (nextTheme.themeTokens.typography as Record<string, unknown>)
+          : null;
+      const themeFont = String(
+        typographyDefaults?.fontFamily ?? tokenTypography?.fontFamily ?? tokenTypography?.displayFont ?? '',
+      ).trim();
+
+      if (themeFont) {
+        merged.typography = {
+          ...merged.typography,
+          fontFamily: themeFont,
+          displayFontFamily: String(tokenTypography?.displayFont ?? themeFont),
+          bodyFontFamily: String(tokenTypography?.bodyFont ?? themeFont),
+        };
+      }
+
+      return {
+        ...current,
+        fields: merged,
+      };
+    });
   }
 
   async function handleAvatarUpload(file: File) {
@@ -998,7 +1054,8 @@ export default function PageEditorView({ pageId: pageIdProp }: PageEditorViewPro
           <Card>
             <section className="editor-section">
               <p className="eyebrow">Theme</p>
-              <div className="theme-preview-row">
+              <p className="muted-copy">{themeCards.length} theme có sẵn — cuộn để xem thêm.</p>
+              <div className="theme-preview-row" role="listbox" aria-label="Danh sách theme">
                 {themeCards.map((theme) => (
                   <button
                     key={theme.id}
@@ -1009,7 +1066,7 @@ export default function PageEditorView({ pageId: pageIdProp }: PageEditorViewPro
                     aria-pressed={theme.id === themeId}
                   >
                     <img
-                      src={defaultThemePreview(theme.id)}
+                      src={defaultThemePreview(theme.id, theme.preview)}
                       alt={theme.name}
                       onError={(e) => {
                         (e.currentTarget as HTMLImageElement).src = '/img/theme-default.svg';
@@ -1426,6 +1483,21 @@ export default function PageEditorView({ pageId: pageIdProp }: PageEditorViewPro
               <SocialLinksEditor
                 items={editorSocialItems}
                 socialIconSize={socialIconSize}
+                displayMode={headerBlock?.fields.socials.displayMode ?? 'icons'}
+                headerColor={headerColor}
+                blockStyle={socialBlockStyle}
+                onDisplayModeChange={(nextMode) =>
+                  updateHeaderBlock((current) => ({
+                    ...current,
+                    fields: {
+                      ...current.fields,
+                      socials: {
+                        ...current.fields.socials,
+                        displayMode: nextMode,
+                      },
+                    },
+                  }))
+                }
                 onIconSizeChange={(nextSize) =>
                   updateHeaderBlock((current) => ({
                     ...current,

@@ -9,6 +9,7 @@ export type ThemeRecord = {
   preview?: string;
   description?: string;
   cssDefaults?: Record<string, unknown>;
+  themeTokens?: Record<string, unknown>;
   fields?: Array<{
     key: string;
     type: string;

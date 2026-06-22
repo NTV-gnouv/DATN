@@ -74,7 +74,36 @@ export type ReviewPageBlock = PageBlock & {
   reviews: ReviewItem[];
 };
 
-export type ContentBlockType = 'text' | 'gallery' | 'link-block' | 'review-block';
+export const ALBUM_BLOCK_MAX_ALBUMS = 5;
+export const ALBUM_BLOCK_MAX_IMAGES = 5;
+export const ALBUM_BLOCK_MAX_CATEGORIES = 12;
+export const ALBUM_DESCRIPTION_MAX_LENGTH = 120;
+
+export type AlbumImage = {
+  id: string;
+  url: string;
+  caption?: string;
+};
+
+export type AlbumItem = {
+  id: string;
+  title: string;
+  description?: string;
+  category?: string;
+  images: AlbumImage[];
+};
+
+export type AlbumPageBlock = PageBlock & {
+  type: 'album-block';
+  id: string;
+  visible?: boolean;
+  title?: string;
+  subtitle?: string;
+  categories?: string[];
+  albums: AlbumItem[];
+};
+
+export type ContentBlockType = 'text' | 'gallery' | 'link-block' | 'review-block' | 'album-block';
 
 export function isTextBlock(block: PageBlock): block is TextPageBlock {
   return block.type === 'text';
@@ -90,4 +119,8 @@ export function isLinkPageBlock(block: PageBlock): block is LinkPageBlock {
 
 export function isReviewPageBlock(block: PageBlock): block is ReviewPageBlock {
   return block.type === 'review-block';
+}
+
+export function isAlbumPageBlock(block: PageBlock): block is AlbumPageBlock {
+  return block.type === 'album-block';
 }

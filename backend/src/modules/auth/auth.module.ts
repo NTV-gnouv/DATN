@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 
 import { NotificationsModule } from '../notifications/notifications.module';
+import { PagesModule } from '../pages/pages.module';
 
 import { AuthController } from './auth.controller';
 import { AuthRepository } from './auth.repository';
@@ -11,6 +12,7 @@ import { AuthService } from './auth.service';
 @Module({
   imports: [
     NotificationsModule,
+    PagesModule,
     JwtModule.registerAsync({
       global: true,
       imports: [ConfigModule],

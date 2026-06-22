@@ -1,8 +1,8 @@
 import type { BlockRenderContext } from '@/components/blocks/ContentBlockRenderer';
 
-export function getBlockShellStyle(context: BlockRenderContext): React.CSSProperties {
+export function getBlockShellStyle(_context?: BlockRenderContext): React.CSSProperties {
   return {
-    width: `${context.divWidth}%`,
+    width: 'var(--block-shell-width, 100%)',
     marginInline: 'auto',
   };
 }
@@ -23,7 +23,9 @@ export function getBlockSurfaceStyle(context: BlockRenderContext): React.CSSProp
 export function getBlockItemStyle(context: BlockRenderContext): React.CSSProperties {
   return {
     ...getBlockSurfaceStyle(context),
+    fontFamily: context.bodyFontStack,
     fontSize: `${context.reviewFontSize}px`,
+    lineHeight: 1.5,
   };
 }
 

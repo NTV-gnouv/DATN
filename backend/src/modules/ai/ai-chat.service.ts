@@ -57,6 +57,10 @@ const CHAT_STEPS: ChatStep[] = [
   },
 ];
 
+function buildStyleChoiceMessage(optionCount: number): string {
+  return `Mình đã chuẩn bị ${optionCount} phong cách giao diện khác nhau — từ hiện đại, phác thảo tay, retro đến risograph. Hãy chọn kiểu bạn thích nhất!`;
+}
+
 function normalizeSocialHandle(raw: string): string {
   const trimmed = String(raw ?? '').trim();
   if (!trimmed) {
@@ -241,7 +245,7 @@ export class AiChatService {
         ...this.buildSessionPayload(session),
         styleOptions: session.styleOptions ?? [],
         awaitingStyleChoice: true,
-        newMessages: [this.toAssistantMessage('Hãy chọn một trong 3 kiểu giao diện để mình hoàn tất trang nhé!')],
+        newMessages: [this.toAssistantMessage('Hãy chọn một phong cách giao diện để mình hoàn tất trang nhé!')],
         awaitingInput: false,
         canGenerate: false,
       };
@@ -502,7 +506,7 @@ export class AiChatService {
         session,
         styleOptions: session.styleOptions ?? [],
         profile: session.profile ?? null,
-        newMessages: [this.toAssistantMessage('Hãy chọn một trong 3 kiểu giao diện bên dưới nhé!')],
+        newMessages: [this.toAssistantMessage('Hãy chọn một phong cách giao diện bên dưới nhé!')],
         awaitingStyleChoice: true,
       };
     }
@@ -529,7 +533,7 @@ export class AiChatService {
 
     const profile = await this.brandProfileService.generateProfile({ name, occupation, description });
     session.profile = profile as unknown as Record<string, unknown>;
-    session = await this.appendMessage(session, 'assistant', 'Đang chuẩn bị 3 phương án giao diện khác nhau cho bạn lựa chọn...');
+    session = await this.appendMessage(session, 'assistant', 'Đang chuẩn bị nhiều phương án giao diện đa phong cách cho bạn lựa chọn...');
     session = await this.aiChatRepository.save(session);
 
     const socialHandles = {
@@ -549,6 +553,7 @@ export class AiChatService {
       baseUx,
     });
 
+    session.baseUx = baseUx as unknown as Record<string, unknown>;
     session.styleOptions = styleOptions.map((option) => ({
       id: option.id,
       label: option.label,
@@ -556,11 +561,8 @@ export class AiChatService {
       preview: option.preview,
     }));
     session.status = 'choosing_style';
-    session = await this.appendMessage(
-      session,
-      'assistant',
-      'Mình đã chuẩn bị 3 kiểu giao diện — mỗi kiểu có nền, bóng block và avatar khác nhau. Hãy chọn kiểu bạn thích nhất!',
-    );
+    const styleChoiceMessage = buildStyleChoiceMessage(styleOptions.length);
+    session = await this.appendMessage(session, 'assistant', styleChoiceMessage);
     session = await this.aiChatRepository.save(session);
 
     if (uxWarnings.length) {
@@ -573,9 +575,7 @@ export class AiChatService {
       styleOptions: session.styleOptions,
       baseUx,
       images,
-      newMessages: [
-        this.toAssistantMessage('Mình đã chuẩn bị 3 kiểu giao diện — mỗi kiểu có nền, bóng block và avatar khác nhau. Hãy chọn kiểu bạn thích nhất!'),
-      ],
+      newMessages: [this.toAssistantMessage(styleChoiceMessage)],
       awaitingStyleChoice: true,
     };
   }
@@ -594,6 +594,7 @@ export class AiChatService {
     const styleOptions = this.uxDesignService.generateStyleOptions(profile, {
       backgroundImageUrl: session.backgroundImageUrl,
       pageKey: sessionId,
+      baseUx: session.baseUx as import('@/shared/types/ux-design.types').UxDesignProfile | undefined,
     });
     const selected = styleOptions.find((option) => option.id === styleOptionId);
     if (!selected) {

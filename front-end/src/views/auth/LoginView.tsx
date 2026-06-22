@@ -6,18 +6,45 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useAuth } from '@/hooks/useAuth';
 import { loadSession } from '@/services/auth.service';
+import { resolveOnboardingPath } from '@/utils/onboarding';
 
 export default function LoginView() {
   const navigate = useNavigate();
   const { handleLogin, loading, error } = useAuth();
+  const [checkingSession, setCheckingSession] = useState(true);
+
   useEffect(() => {
-    const session = loadSession();
-    if (session) {
-      navigate('/dashboard');
-    }
+    let cancelled = false;
+
+    void (async () => {
+      const session = loadSession();
+      if (!session) {
+        if (!cancelled) {
+          setCheckingSession(false);
+        }
+        return;
+      }
+
+      const nextPath = await resolveOnboardingPath(session);
+      if (!cancelled) {
+        navigate(nextPath, { replace: true });
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [navigate]);
   const [email, setEmail] = useState('admin@shotvn.local');
   const [password, setPassword] = useState('Admin@123');
+
+  if (checkingSession && loadSession()) {
+    return (
+      <AuthShell eyebrow="Đăng nhập" title="Chào mừng quay lại" subtitle="Đang kiểm tra tài khoản...">
+        <p className="muted-copy">Đang kiểm tra tiến trình thiết lập...</p>
+      </AuthShell>
+    );
+  }
 
   return (
     <AuthShell

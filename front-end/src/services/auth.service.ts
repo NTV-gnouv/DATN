@@ -56,3 +56,29 @@ export function loadSession(): AuthSession | null {
 export function clearSession() {
   localStorage.removeItem(SESSION_KEY);
 }
+
+export async function completeOnboarding(userId: string) {
+  return apiRequest<AuthSession['user']>('/auth/complete-onboarding', {
+    method: 'POST',
+    body: JSON.stringify({ userId }),
+  });
+}
+
+export async function syncUserProfile(userId: string) {
+  return apiRequest<AuthSession['user']>('/auth/sync-user', {
+    method: 'POST',
+    body: JSON.stringify({ userId }),
+  });
+}
+
+export function updateSessionUser(user: AuthSession['user']) {
+  const session = loadSession();
+  if (!session) {
+    return;
+  }
+
+  saveSession({
+    ...session,
+    user,
+  });
+}

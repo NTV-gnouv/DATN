@@ -9,9 +9,9 @@ export function buildContactFormSurfaceStyle(options: {
   shadow: { enabled: boolean; x: number; y: number; blur: number; spread: number; color: string };
   extra?: CSSProperties;
 }): CSSProperties {
-  const { divWidth, contentBg, border, shadow, extra } = options;
+  const { contentBg, border, shadow, extra } = options;
   return {
-    width: `${divWidth}%`,
+    width: 'var(--block-shell-width, 100%)',
     marginInline: 'auto',
     background: contentBg,
     border: `${border.width}px ${border.style} ${border.color}`,

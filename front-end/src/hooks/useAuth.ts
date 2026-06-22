@@ -3,17 +3,22 @@ import { useNavigate } from 'react-router-dom';
 
 import {
   clearSession,
+  completeOnboarding,
   login,
   register,
   requestPasswordReset,
   resetPassword,
   saveSession,
+  updateSessionUser,
+  loadSession,
 } from '@/services/auth.service';
 import type {
   LoginPayload,
   RegisterPayload,
   ResetPasswordPayload,
+  AuthSession,
 } from '@/models/auth.model';
+import { resolveOnboardingPath, clearOnboardingPageId } from '@/utils/onboarding';
 
 export function useAuth() {
   const navigate = useNavigate();
@@ -21,14 +26,19 @@ export function useAuth() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
+  async function redirectAfterAuth(session: AuthSession) {
+    const nextPath = await resolveOnboardingPath(session);
+    navigate(nextPath);
+    return session;
+  }
+
   async function handleLogin(payload: LoginPayload) {
     setLoading(true);
     setError('');
     try {
       const session = await login(payload);
       saveSession(session);
-      navigate('/dashboard');
-      return session;
+      return await redirectAfterAuth(session);
     } catch (caughtError) {
       const nextError = caughtError instanceof Error ? caughtError.message : 'Đăng nhập thất bại';
       setError(nextError);
@@ -45,8 +55,7 @@ export function useAuth() {
       await register(payload);
       const session = await login({ email: payload.email, password: payload.password });
       saveSession(session);
-      navigate('/dashboard/pages/new');
-      return session;
+      return await redirectAfterAuth(session);
     } catch (caughtError) {
       const nextError = caughtError instanceof Error ? caughtError.message : 'Đăng ký thất bại';
       setError(nextError);
@@ -92,6 +101,19 @@ export function useAuth() {
     navigate('/login');
   }
 
+  async function finishOnboarding() {
+    const session = loadSession();
+    if (!session?.user?.id) {
+      navigate('/login');
+      return;
+    }
+
+    const user = await completeOnboarding(session.user.id);
+    updateSessionUser(user);
+    clearOnboardingPageId();
+    navigate('/dashboard');
+  }
+
   return {
     loading,
     message,
@@ -102,5 +124,6 @@ export function useAuth() {
     handleForgotPassword,
     handleResetPassword,
     signOut,
+    finishOnboarding,
   };
 }

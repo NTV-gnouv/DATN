@@ -68,4 +68,19 @@ export class AuthController {
   logout(@Body() body: LogoutDto) {
     return this.authService.logout(body.userId);
   }
+
+  @Post('complete-onboarding')
+  @ApiOperation({ summary: 'Mark onboarding as completed for the user.' })
+  @ApiBody({ description: 'User ID payload' })
+  completeOnboarding(@Body() body: LogoutDto) {
+    return this.authService.completeOnboarding(body.userId);
+  }
+
+  @Public()
+  @Post('sync-user')
+  @ApiOperation({ summary: 'Refresh user profile and onboarding status for an existing session.' })
+  @ApiBody({ description: 'User ID payload' })
+  syncUser(@Body() body: LogoutDto) {
+    return this.authService.getUserProfile(body.userId);
+  }
 }

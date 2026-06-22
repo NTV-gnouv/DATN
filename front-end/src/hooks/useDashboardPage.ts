@@ -2,19 +2,8 @@ import { useEffect, useState } from 'react';
 
 import type { LandingPage } from '@/models/page.model';
 import { loadSession } from '@/services/auth.service';
-import { getPageById, getPageByUsername } from '@/services/pages.service';
-
-function normalizeSlug(value: string) {
-  return String(value || '')
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/\p{Diacritic}/gu, '')
-    .replace(/[^a-z0-9\s-]/g, '')
-    .trim()
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/(^-|-$)/g, '');
-}
+import { getPageByUsername } from '@/services/pages.service';
+import { getAccountUsernames } from '@/utils/onboarding';
 
 export function useDashboardPage() {
   const session = loadSession();
@@ -27,11 +16,7 @@ export function useDashboardPage() {
 
     void (async () => {
       try {
-        const usernameFromName = normalizeSlug(session?.user?.name || '');
-        const usernameFromEmail = normalizeSlug(session?.user?.email?.split('@')[0] || '');
-        const accountUsernames = [usernameFromName, usernameFromEmail].filter(
-          (value, index, all) => Boolean(value) && all.indexOf(value) === index,
-        );
+        const accountUsernames = getAccountUsernames(session);
 
         let loadedPage: LandingPage | null = null;
         for (const username of accountUsernames) {
@@ -41,8 +26,12 @@ export function useDashboardPage() {
             break;
           }
         }
+
         if (!loadedPage) {
-          loadedPage = await getPageById('p-demo');
+          if (!cancelled) {
+            setPage(null);
+          }
+          return;
         }
 
         if (!cancelled) {

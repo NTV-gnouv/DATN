@@ -2,15 +2,17 @@ import { useState, type CSSProperties } from 'react';
 import { ChevronDownIcon } from '@heroicons/react/24/outline';
 
 import type {
+  AlbumPageBlock,
   GalleryPageBlock,
   LinkPageBlock,
   ReviewPageBlock,
   TextPageBlock,
 } from '@/models/content-blocks.model';
 import type { PageBlock } from '@/models/page.model';
+import { AlbumBlockPreview } from '@/components/blocks/AlbumBlockPreview';
 import { LinkBlockPreview } from '@/components/blocks/LinkBlockPreview';
 import { ReviewBlockPreview } from '@/components/blocks/ReviewBlockPreview';
-import { getBlockSurfaceStyle } from '@/utils/block-render-context';
+import { getBlockShellStyle, getBlockSurfaceStyle } from '@/utils/block-render-context';
 import {
   getGalleryAspectRatioStyle,
   getGalleryImageScaleStyle,
@@ -40,8 +42,7 @@ type ContentBlockRendererProps = {
 function cardStyle(context: BlockRenderContext): CSSProperties {
   return {
     ...getBlockSurfaceStyle(context),
-    width: `${context.divWidth}%`,
-    marginInline: 'auto',
+    ...getBlockShellStyle(context),
     fontFamily: context.bodyFontStack,
   };
 }
@@ -204,6 +205,10 @@ function ReviewBlockContent({ block, context }: { block: ReviewPageBlock; contex
   return <ReviewBlockPreview block={block} context={context} />;
 }
 
+function AlbumBlockContent({ block, context }: { block: AlbumPageBlock; context: BlockRenderContext }) {
+  return <AlbumBlockPreview block={block} context={context} />;
+}
+
 export function ContentBlockRenderer({ block, index, context }: ContentBlockRendererProps) {
   const type = String(block.type ?? '');
 
@@ -232,6 +237,17 @@ export function ContentBlockRenderer({ block, index, context }: ContentBlockRend
       <ReviewBlockContent
         key={`review-block-${reviewBlock.id || index}`}
         block={reviewBlock}
+        context={context}
+      />
+    );
+  }
+
+  if (type === 'album-block') {
+    const albumBlock = block as AlbumPageBlock;
+    return (
+      <AlbumBlockContent
+        key={`album-block-${albumBlock.id || index}`}
+        block={albumBlock}
         context={context}
       />
     );

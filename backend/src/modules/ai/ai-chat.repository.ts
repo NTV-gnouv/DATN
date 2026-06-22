@@ -33,6 +33,7 @@ export type AiChatSessionRecord = {
   profile?: Record<string, unknown>;
   styleOptions?: AiChatStyleOption[];
   selectedStyleId?: string;
+  baseUx?: Record<string, unknown>;
   backgroundImageUrl?: string;
   messages: AiChatMessage[];
   createdAt: string;

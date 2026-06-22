@@ -1,5 +1,5 @@
 import { inferFontPairingFromBrand } from '@/shared/fonts/font-catalog';
-import type { UxDesignInput, UxDesignProfile } from '@/shared/types/ux-design.types';
+import type { DesignLanguage, UxDesignInput, UxDesignProfile } from '@/shared/types/ux-design.types';
 
 export type AvatarDisplayStylePreset = 'circle' | 'square' | 'arched' | 'ring' | 'horizontal';
 export type BackgroundEffect = 'none' | 'sparkle' | 'shimmer' | 'grain';
@@ -9,6 +9,9 @@ export type UxStylePresetDefinition = {
   id: string;
   label: string;
   description: string;
+  design_language: DesignLanguage;
+  surface_class?: string;
+  tags: string[];
   overrides: Partial<UxDesignProfile> & {
     avatar_display_style: AvatarDisplayStylePreset;
     background_effect: BackgroundEffect;
@@ -32,6 +35,8 @@ export const UX_STYLE_PRESETS: UxStylePresetDefinition[] = [
     id: 'hero-photo',
     label: 'Ảnh nổi bật',
     description: 'Nền ảnh full, block trong suốt nhẹ, avatar viền chấm và hiệu ứng lấp lánh tinh tế.',
+    design_language: 'modern',
+    tags: ['photo', 'clean', 'professional', 'portfolio', 'lifestyle', 'travel'],
     overrides: {
       background_style: 'image',
       background_effect: 'shimmer',
@@ -48,6 +53,8 @@ export const UX_STYLE_PRESETS: UxStylePresetDefinition[] = [
     id: 'vibrant-gradient',
     label: 'Gradient sống động',
     description: 'Nền gradient chuyển màu, block tint màu thương hiệu, avatar vòm và bóng phát sáng.',
+    design_language: 'glassmorphism',
+    tags: ['vibrant', 'colorful', 'creative', 'youth', 'music', 'fashion', 'energy'],
     overrides: {
       background_style: 'gradient',
       background_effect: 'sparkle',
@@ -64,6 +71,8 @@ export const UX_STYLE_PRESETS: UxStylePresetDefinition[] = [
     id: 'bold-solid',
     label: 'Tối giản mạnh',
     description: 'Nền màu đơn, viền outline rõ, avatar ngang trái và block tương phản nhẹ.',
+    design_language: 'neo-brutalism',
+    tags: ['minimal', 'bold', 'business', 'startup', 'professional', 'strong'],
     overrides: {
       background_style: 'solid',
       background_effect: 'grain',
@@ -76,7 +85,108 @@ export const UX_STYLE_PRESETS: UxStylePresetDefinition[] = [
       spacing_scale: 'tight',
     },
   },
+  {
+    id: 'handrawn-cream',
+    label: 'Phác thảo kem',
+    description: 'Giấy kem ấm, viền nét đứt, bóng bút chì và font viết tay — phong cách illustrated.',
+    design_language: 'handrawn-sketch',
+    surface_class: 'theme-surface-handrawn',
+    tags: ['handmade', 'warm', 'organic', 'friendly', 'journal', 'food', 'craft', 'illustration'],
+    overrides: {
+      background_style: 'solid',
+      background_effect: 'none',
+      shadow_style: 'offset',
+      border_style: 'dashed',
+      animation_style: 'fade',
+      avatar_display_style: 'circle',
+      content_block_style: 'contrast-soft',
+      color_mood: 'warm',
+      spacing_scale: 'balanced',
+      font_pairing_id: 'creative-handrawn',
+    },
+  },
+  {
+    id: 'doodle-sketch',
+    label: 'Doodle Sketch',
+    description: 'Phác thảo tay với viền nét đậm, bóng offset và nền kem — vui nhộn, sáng tạo.',
+    design_language: 'doodle-sketch',
+    surface_class: 'theme-surface-doodle',
+    tags: ['doodle', 'sketch', 'creative', 'art', 'fun', 'playful', 'handmade'],
+    overrides: {
+      background_style: 'solid',
+      background_effect: 'none',
+      shadow_style: 'offset',
+      border_style: 'brutal',
+      animation_style: 'float',
+      avatar_display_style: 'square',
+      content_block_style: 'tinted',
+      color_mood: 'pastel',
+      spacing_scale: 'airy',
+      font_pairing_id: 'creative-doodle',
+    },
+  },
+  {
+    id: 'retro-pixel',
+    label: 'Retro Pixel',
+    description: 'Giao diện Windows 95 — nền teal, panel bạc, viền 3D và font pixel.',
+    design_language: 'retro-pixel',
+    surface_class: 'theme-surface-win95',
+    tags: ['retro', 'gaming', 'tech', 'pixel', 'nostalgia', 'developer', 'geek'],
+    overrides: {
+      background_style: 'solid',
+      background_effect: 'none',
+      shadow_style: 'none',
+      border_style: 'sharp',
+      animation_style: 'none',
+      avatar_display_style: 'square',
+      content_block_style: 'white',
+      color_mood: 'clean',
+      spacing_scale: 'tight',
+      font_pairing_id: 'retro-pixel',
+    },
+  },
+  {
+    id: 'risograph-print',
+    label: 'Risograph Print',
+    description: 'In risograph — giấy kem, màu neon và bóng offset xanh, cảm giác in ấn nghệ thuật.',
+    design_language: 'risograph',
+    surface_class: 'theme-surface-riso',
+    tags: ['risograph', 'print', 'art', 'design', 'editorial', 'zine', 'poster'],
+    overrides: {
+      background_style: 'solid',
+      background_effect: 'grain',
+      shadow_style: 'offset',
+      border_style: 'soft',
+      animation_style: 'fade',
+      avatar_display_style: 'arched',
+      content_block_style: 'tinted',
+      color_mood: 'pastel',
+      spacing_scale: 'balanced',
+      font_pairing_id: 'creative-riso',
+    },
+  },
+  {
+    id: 'editorial-luxe',
+    label: 'Editorial sang trọng',
+    description: 'Serif editorial, nền ảnh mờ, khoảng trắng rộng — phù hợp nhiếp ảnh và thời trang.',
+    design_language: 'editorial',
+    tags: ['editorial', 'luxury', 'fashion', 'photography', 'elegant', 'magazine'],
+    overrides: {
+      background_style: 'image',
+      background_effect: 'grain',
+      shadow_style: 'soft',
+      border_style: 'none',
+      animation_style: 'fade',
+      avatar_display_style: 'ring',
+      content_block_style: 'glass',
+      color_mood: 'clean',
+      spacing_scale: 'airy',
+      font_pairing_id: 'classic-playfair',
+    },
+  },
 ];
+
+const DEFAULT_STYLE_OPTION_COUNT = 6;
 
 function inferTypographyStyle(input: UxDesignInput): UxDesignProfile['typography_style'] {
   const context = `${input.brand_style} ${input.personality_traits.join(' ')} ${input.occupation} ${input.description}`.toLowerCase();
@@ -92,6 +202,79 @@ function inferTypographyStyle(input: UxDesignInput): UxDesignProfile['typography
   return 'modern';
 }
 
+function scorePresetForBrand(preset: UxStylePresetDefinition, input: UxDesignInput): number {
+  const context = `${input.brand_style} ${input.personality_traits.join(' ')} ${input.occupation} ${input.description}`.toLowerCase();
+  let score = 0;
+
+  for (const tag of preset.tags) {
+    if (context.includes(tag)) {
+      score += 3;
+    }
+  }
+
+  if (/retro|game|developer|code|pixel|win95/.test(context) && preset.id === 'retro-pixel') {
+    score += 8;
+  }
+  if (/phác thảo|sketch|doodle|hand|tay|illustration|vẽ/.test(context) && (preset.id === 'handrawn-cream' || preset.id === 'doodle-sketch')) {
+    score += 8;
+  }
+  if (/in ấn|riso|zine|poster|print/.test(context) && preset.id === 'risograph-print') {
+    score += 8;
+  }
+  if (/luxury|fashion|editorial|magazine|photo/.test(context) && preset.id === 'editorial-luxe') {
+    score += 6;
+  }
+  if (/gradient|màu sắc|colorful|neon|vibrant/.test(context) && preset.id === 'vibrant-gradient') {
+    score += 5;
+  }
+  if (/minimal|clean|professional|business/.test(context) && (preset.id === 'bold-solid' || preset.id === 'hero-photo')) {
+    score += 4;
+  }
+
+  return score;
+}
+
+export function selectStylePresetsForProfile(
+  input: UxDesignInput,
+  limit = DEFAULT_STYLE_OPTION_COUNT,
+): UxStylePresetDefinition[] {
+  const ranked = UX_STYLE_PRESETS.map((preset) => ({
+    preset,
+    score: scorePresetForBrand(preset, input),
+  })).sort((a, b) => b.score - a.score);
+
+  const selected = new Map<string, UxStylePresetDefinition>();
+  const modernIds = new Set(['hero-photo', 'vibrant-gradient', 'bold-solid', 'editorial-luxe']);
+  const expressiveIds = new Set(['handrawn-cream', 'doodle-sketch', 'risograph-print']);
+  const characterIds = new Set(['retro-pixel', 'doodle-sketch', 'handrawn-cream', 'risograph-print']);
+
+  const pickFrom = (ids: Set<string>) => {
+    for (const item of ranked) {
+      if (selected.size >= limit) {
+        return;
+      }
+      if (ids.has(item.preset.id) && !selected.has(item.preset.id)) {
+        selected.set(item.preset.id, item.preset);
+      }
+    }
+  };
+
+  pickFrom(modernIds);
+  pickFrom(expressiveIds);
+  pickFrom(characterIds);
+
+  for (const item of ranked) {
+    if (selected.size >= limit) {
+      break;
+    }
+    if (!selected.has(item.preset.id)) {
+      selected.set(item.preset.id, item.preset);
+    }
+  }
+
+  return Array.from(selected.values()).slice(0, limit);
+}
+
 export function buildUxProfileFromPreset(
   preset: UxStylePresetDefinition,
   input: UxDesignInput,
@@ -99,15 +282,16 @@ export function buildUxProfileFromPreset(
 ): UxDesignProfile {
   const pairing = inferFontPairingFromBrand(input);
   const typographyStyle = baseUx?.typography_style ?? inferTypographyStyle(input);
+  const presetFontPairingId = preset.overrides.font_pairing_id ?? baseUx?.font_pairing_id ?? pairing.id;
 
   return {
-    design_language: 'modern',
+    design_language: preset.design_language,
     design_language_label: preset.label,
     color_mood: preset.overrides.color_mood ?? 'clean',
     background_style: preset.overrides.background_style ?? 'image',
     typography_style: typographyStyle,
-    font_pairing_id: baseUx?.font_pairing_id ?? pairing.id,
-    font_family: pairing.bodyFont,
+    font_pairing_id: presetFontPairingId,
+    font_family: baseUx?.font_family ?? pairing.bodyFont,
     heading_size: baseUx?.heading_size ?? pairing.headingSize,
     body_size: baseUx?.body_size ?? pairing.bodySize,
     line_height: baseUx?.line_height ?? pairing.lineHeight,
@@ -126,6 +310,7 @@ export function buildUxProfileFromPreset(
     content_block_style: preset.overrides.content_block_style,
     style_preset_id: preset.id,
     style_preset_label: preset.label,
+    surface_class: preset.surface_class,
     gallery_layout: 'column',
     gallery_appearance: 'exposed',
     interaction: baseUx?.interaction ?? { hover_scale: 1.02, transition_ms: 240, focus_ring: true },
@@ -133,4 +318,3 @@ export function buildUxProfileFromPreset(
     reasoning: preset.description,
   };
 }
-

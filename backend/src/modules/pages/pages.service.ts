@@ -46,6 +46,10 @@ export class PagesService {
     return this.pagesRepository.updateSlugByUsername(username, slug);
   }
 
+  findForAccount(user: { id?: string; name: string; email: string }) {
+    return this.pagesRepository.findForAccount(user);
+  }
+
   getEditorConfig(id: string) {
     return this.pagesRepository.getEditorConfig(id);
   }

@@ -8,7 +8,7 @@ export type PageBlockMeta = {
 };
 
 const DEFAULT_HERO_BODY = 'A fast creator landing page with a clean Beacons-style flow.';
-const STRUCTURED_BLOCK_TYPES = new Set(['contact-form', 'text', 'gallery', 'link-block', 'review-block']);
+const STRUCTURED_BLOCK_TYPES = new Set(['contact-form', 'text', 'gallery', 'album-block', 'link-block', 'review-block']);
 const HEADER_BLOCK_TYPE = 'header';
 
 export function createBlockId(prefix: string) {
@@ -180,6 +180,16 @@ export function createDefaultBlock(type: AddableBlockType): PageBlock {
         showMoreLabel: 'Xem thêm',
         images: [],
       };
+    case 'album-block':
+      return {
+        type: 'album-block',
+        id,
+        visible: true,
+        title: '',
+        subtitle: '',
+        categories: [],
+        albums: [],
+      };
     case 'link-block':
       return {
         type: 'link-block',
@@ -246,6 +256,17 @@ export function isRenderablePreviewBlock(
   if (type === 'gallery') {
     const images = Array.isArray(typedBlock.images) ? typedBlock.images : [];
     return images.some((item) => item && typeof item === 'object' && String((item as { url?: string }).url ?? '').trim());
+  }
+
+  if (type === 'album-block') {
+    const albums = Array.isArray(typedBlock.albums) ? typedBlock.albums : [];
+    return albums.some((album) => {
+      if (!album || typeof album !== 'object') {
+        return false;
+      }
+      const images = Array.isArray((album as { images?: unknown[] }).images) ? (album as { images: unknown[] }).images : [];
+      return images.some((item) => item && typeof item === 'object' && String((item as { url?: string }).url ?? '').trim());
+    });
   }
 
   if (type === 'link-block') {

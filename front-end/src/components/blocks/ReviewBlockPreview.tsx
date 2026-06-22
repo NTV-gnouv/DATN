@@ -7,6 +7,7 @@ import {
   getBlockNavStyle,
   getBlockProgressFillStyle,
   getBlockProgressTrackStyle,
+  getBlockShellStyle,
   getBlockSurfaceStyle,
 } from '@/utils/block-render-context';
 import { normalizeReviewBlock } from '@/utils/review-block.utils';
@@ -19,8 +20,7 @@ type ReviewBlockPreviewProps = {
 function cardStyle(context: BlockRenderContext): CSSProperties {
   return {
     ...getBlockSurfaceStyle(context),
-    width: `${context.divWidth}%`,
-    marginInline: 'auto',
+    ...getBlockShellStyle(context),
     fontFamily: context.bodyFontStack,
   };
 }

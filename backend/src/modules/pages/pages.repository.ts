@@ -75,22 +75,18 @@ export class PagesRepository {
     const title = String(payload.title ?? 'My Landing Page');
     const slug = this.normalizeSlug(String(payload.slug ?? title));
     const username = String(payload.username ?? 'creator');
+    const ownerId = String(payload.ownerId ?? '').trim();
 
     return {
       id: `p-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       title,
       slug,
       username,
+      ...(ownerId ? { ownerId } : {}),
       themeId: this.normalizeThemeId(payload.themeId),
       status: String(payload.status ?? 'draft'),
       template: String(payload.template ?? 'starter'),
-      blocks:
-        payload.blocks ??
-        [
-          { type: 'hero', headline: title, body: 'A fast creator landing page with a clean Beacons-style flow.' },
-          { type: 'links', items: ['Link one', 'Link two', 'Link three'] },
-          { type: 'socials', items: ['Instagram', 'TikTok', 'YouTube'] },
-        ],
+      blocks: payload.blocks ?? [],
       createdAt: new Date().toISOString(),
     };
   }
@@ -216,6 +212,42 @@ export class PagesRepository {
     }
 
     return this.updateSlug(String(existing.id), slug);
+  }
+
+  async findByOwnerId(ownerId: string) {
+    const pages = await this.readAllPages();
+    return pages.find((page: any) => String(page.ownerId ?? '') === ownerId) ?? null;
+  }
+
+  async findForAccount(user: { id?: string; name: string; email: string }) {
+    if (user.id) {
+      const byOwner = await this.findByOwnerId(user.id);
+      if (byOwner) {
+        return byOwner;
+      }
+    }
+
+    const usernames = [user.name, user.email.split('@')[0] || '']
+      .map((value) =>
+        value
+          .normalize('NFD')
+          .replace(/\p{Diacritic}/gu, '')
+          .trim()
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, '')
+          .slice(0, 80),
+      )
+      .filter((value, index, all) => Boolean(value) && all.indexOf(value) === index);
+
+    for (const username of usernames) {
+      const page = await this.findByUsername(username);
+      if (page) {
+        return page;
+      }
+    }
+
+    return null;
   }
 
   async getEditorConfig(id: string) {

@@ -93,6 +93,7 @@ export function resolveThemePreviewMetrics(input: ThemePreviewMetricsInput): The
     displayNameSizePercent,
     divWidth: input.divWidthPercent ?? 100,
     cssVars: {
+      ['--block-shell-width' as string]: `${input.divWidthPercent ?? 100}%`,
       ['--profile-avatar-width-percent' as string]: `${avatarWidthPercent}%`,
       ['--theme-preview-gap' as string]: `${gap}px`,
       ['--theme-preview-padding-x' as string]: `${paddingX}px`,
