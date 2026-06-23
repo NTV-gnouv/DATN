@@ -1,0 +1,394 @@
+/* Public page styles */
+
+.card,
+.public-hero,
+.public-link-card {
+  padding: 24px;
+}
+
+.site-hero {
+  display: none;
+}
+
+.site-hero-copy {
+  display: none;
+}
+
+/* Public Landing Page - mobile-first theme canvas */
+.public-landing-page {
+  display: flex;
+  justify-content: center;
+  margin: 0;
+  min-height: 100vh;
+  background-attachment: fixed;
+  background-position: center center;
+  background-size: cover;
+  padding: 0;
+}
+
+.site-shell.site-shell--public .site-hero {
+  display: none !important;
+}
+
+.public-landing-page .public-preview-screen {
+  width: min(100%, 420px);
+  max-width: 100%;
+  box-sizing: border-box;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: max(16px, env(safe-area-inset-top, 0px)) max(14px, env(safe-area-inset-right, 0px)) max(24px, env(safe-area-inset-bottom, 0px)) max(14px, env(safe-area-inset-left, 0px)) !important;
+  height: auto !important;
+  min-height: 100vh;
+  max-height: none !important;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--theme-preview-gap, 14px);
+  overflow: visible !important;
+  margin: 0;
+}
+
+.public-landing-page .public-preview-screen>*:not(.phone-avatar):not(.profile-header) {
+  flex-shrink: 0;
+  width: 100%;
+}
+
+.public-landing-page .public-preview-screen h4,
+.public-landing-page .public-preview-screen>p,
+.public-landing-page .public-preview-screen .phone-avatar,
+.public-landing-page .public-preview-screen .profile-avatar,
+.public-landing-page .public-preview-screen .phone-social-icons {
+  align-self: center;
+  max-width: 100%;
+}
+
+.public-landing-page .public-preview-screen .profile-header.is-layout-horizontal .profile-avatar {
+  align-self: auto;
+}
+
+.public-landing-page .public-preview-screen h4 {
+  font-size: var(--theme-title-size, clamp(18px, 5.4vw, 24px)) !important;
+  line-height: 1.15;
+  text-align: center;
+}
+
+.public-landing-page .public-preview-screen .profile-header.is-layout-horizontal h4 {
+  text-align: left;
+  align-self: flex-start;
+}
+
+.public-landing-page .public-preview-screen>p {
+  font-size: var(--theme-bio-size, clamp(13px, 3.8vw, 15px));
+  text-align: center;
+}
+
+.public-landing-page .public-preview-screen .phone-avatar {
+  width: auto;
+}
+
+.public-landing-page .content-link-block,
+.public-landing-page .content-text-block,
+.public-landing-page .content-gallery-block,
+.public-landing-page .content-album-block,
+.public-landing-page .content-review-block,
+.public-landing-page .landing-contact-form,
+.public-landing-page .phone-social-buttons,
+.public-landing-page .profile-social-section>.phone-social-icons,
+.public-landing-page .public-preview-screen>.phone-link-card,
+.public-landing-page .public-preview-screen>.phone-content-card:not(.phone-social-button) {
+  width: var(--block-shell-width, 100%);
+  max-width: 100%;
+  margin-inline: auto;
+  box-sizing: border-box;
+}
+
+.public-preview-screen {
+  width: 263px;
+  height: 570px;
+  min-height: 570px;
+  max-height: 570px;
+  max-width: 100%;
+  border: 2px solid var(--black);
+  border-radius: 24px;
+  background: #ffffff;
+  padding: var(--theme-preview-padding-y, 16px) var(--theme-preview-padding-x, 12px);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--theme-preview-gap, 12px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  box-sizing: border-box;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.public-preview-screen>*:not(.phone-avatar):not(.profile-header) {
+  flex-shrink: 0;
+  width: 100%;
+}
+
+/* Public Landing Page - Phone Avatar */
+.public-preview-screen .phone-avatar {
+  border: 1px solid var(--line);
+  background: var(--panel);
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  overflow: hidden;
+  align-self: center;
+  flex-shrink: 0;
+  max-width: 100%;
+}
+
+.public-preview-screen .phone-avatar.is-circle {
+  border-radius: 9999px;
+}
+
+.public-preview-screen .phone-avatar.is-square {
+  border-radius: var(--radius);
+}
+
+/* Public Landing Page - Typography */
+.public-preview-screen h4 {
+  margin: 2px 0 0;
+  font-size: var(--theme-title-size, 18px);
+  font-weight: 700;
+  line-height: 1.15;
+  text-align: center;
+  max-width: 100%;
+  word-break: break-word;
+}
+
+.public-preview-screen>p {
+  margin: 0;
+  color: var(--muted);
+  text-align: center;
+  font-size: var(--theme-bio-size, 13px);
+  font-weight: 400;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.public-preview-screen .phone-social-icons {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  gap: var(--theme-social-gap, 6px);
+  flex-wrap: wrap;
+}
+
+.public-preview-screen .phone-social-icons span {
+  min-width: 0;
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: transparent;
+  font-size: 11px;
+}
+
+/* Public Landing Page - Link & Content Cards */
+.public-preview-screen .phone-link-card,
+.public-preview-screen .phone-content-card {
+  min-height: 0;
+  padding: var(--theme-card-padding-y, 10px) var(--theme-card-padding-x, 12px);
+  display: grid;
+  align-content: start;
+  justify-items: stretch;
+  text-align: center;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+.public-preview-screen .phone-link-card:not(.phone-social-button),
+.public-preview-screen .phone-content-card:not(.phone-social-button) {
+  width: var(--block-shell-width, 100%);
+  margin-inline: auto;
+}
+
+.public-preview-screen .phone-social-button.phone-content-card {
+  width: 100%;
+  margin-inline: 0;
+}
+
+.public-preview-screen .phone-content-card {
+  gap: var(--theme-card-gap, 8px);
+}
+
+.public-preview-screen .phone-content-card button:not(.content-gallery-collapse-toggle):not(.landing-contact-form-submit) {
+  border: 0;
+  border-radius: var(--radius);
+  color: #ffffff;
+  min-height: 32px;
+  padding: 6px 12px;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.public-footer {
+  display: none;
+}
+
+.public-contact-form {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  justify-items: stretch;
+  align-content: start;
+}
+
+.landing-contact-form-title,
+.public-contact-form h5,
+.landing-contact-form-title {
+  margin: 0;
+  width: 100%;
+  text-align: center;
+}
+
+.landing-contact-form-field,
+.public-contact-form-field {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  margin: 0;
+  border: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+.landing-contact-form-field-label,
+.public-contact-form-field span,
+.public-contact-form-field legend {
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: 600;
+  line-height: inherit;
+}
+
+.landing-contact-form-control,
+.landing-contact-form-field input,
+.landing-contact-form-field select,
+.landing-contact-form-field textarea,
+.public-contact-form-field input,
+.public-contact-form-field select,
+.public-contact-form-field textarea {
+  width: 100%;
+  min-height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+.landing-contact-form-field textarea,
+.public-contact-form-field textarea {
+  min-height: 90px;
+  resize: vertical;
+}
+
+.landing-contact-form-choice-list,
+.public-contact-choice-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.landing-contact-form-choice,
+.public-contact-choice-list label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.landing-contact-form-error,
+.landing-contact-form-success,
+.public-contact-form-error,
+.public-contact-form-success {
+  margin: 0;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  text-align: center;
+  width: 100%;
+}
+
+.landing-contact-form-error,
+.public-contact-form-error {
+  color: #b91c1c;
+}
+
+.landing-contact-form-success,
+.public-contact-form-success {
+  color: #0f766e;
+}
+
+.landing-contact-form-submit,
+.public-contact-form-submit {
+  width: 100%;
+  min-height: 40px;
+  border: 0;
+  border-radius: 8px;
+  color: #ffffff;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  font-weight: 700;
+  text-align: center;
+  cursor: pointer;
+}
+
+.landing-contact-form-submit:disabled,
+.public-contact-form-submit:disabled {
+  cursor: not-allowed;
+  opacity: 0.75;
+}
+
+.public-contact-form h5 {
+  font-size: 18px;
+  text-align: center;
+  width: 100%;
+}
+
+.public-contact-form-field {
+  text-align: center;
+}
+
+.public-contact-form-field span,
+.public-contact-form-field legend {
+  text-align: center;
+  width: 100%;
+}
+
+.landing-contact-form.is-labels-visible.public-contact-form .public-contact-form-field span,
+.landing-contact-form.is-labels-visible.public-contact-form .public-contact-form-field legend {
+  text-align: left;
+}
+
+.public-contact-form-field input,
+.public-contact-form-field select,
+.public-contact-form-field textarea {
+  text-align: center;
+  margin: 0 auto;
+}
+
+.landing-contact-form.is-labels-visible.public-contact-form .public-contact-form-field input,
+.landing-contact-form.is-labels-visible.public-contact-form .public-contact-form-field select,
+.landing-contact-form.is-labels-visible.public-contact-form .public-contact-form-field textarea {
+  text-align: left;
+  margin: 0;
+}
+

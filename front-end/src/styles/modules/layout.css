@@ -1,0 +1,26 @@
+/* Main layout shells (auth, dashboard, site) */
+
+.auth-shell,
+.dashboard-shell,
+.site-shell {
+  height: 100vh;
+}
+
+.auth-shell {
+  display: grid;
+  grid-template-columns: minmax(320px, 1.1fr) minmax(420px, 0.9fr);
+}
+
+.dashboard-shell {
+  display: grid;
+  grid-template-columns: 248px minmax(0, 1fr);
+  background: transparent;
+  min-height: 100vh;
+  overflow-x: clip;
+}
+
+.site-shell {
+  padding: 24px;
+  background: var(--bg);
+}
+

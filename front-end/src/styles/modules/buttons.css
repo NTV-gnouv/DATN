@@ -1,0 +1,98 @@
+/* Button styles and variants */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  padding: 10px 18px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s ease, background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.btn .button-inline-icon {
+  margin-right: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+}
+
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+  transform: none;
+}
+
+.btn-full {
+  width: 100%;
+}
+
+.btn-primary,
+.btn-dark {
+  background: linear-gradient(135deg, #d4a800 0%, #e0b800 100%);
+  color: #ffffff;
+  box-shadow: 0 8px 20px rgba(219, 39, 119, 0.35);
+}
+
+.btn-primary:hover,
+.btn-dark:hover {
+  background: linear-gradient(135deg, #b88f00 0%, #cf9f00 100%);
+}
+
+.btn-secondary {
+  background: #ffffff;
+  color: var(--ink);
+  border-color: var(--line);
+  box-shadow: 0 2px 8px rgba(17, 24, 39, 0.06);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--ink);
+  border-color: transparent;
+}
+
+.auth-links,
+.dashboard-actions {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.auth-links {
+  justify-content: space-between;
+  font-size: 14px;
+}
+
+.auth-links a,
+.dashboard-list-header a,
+.site-footer a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.editor-preview-actions .btn {
+  min-height: 34px;
+  min-width: 34px;
+  padding: 0;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ai-chat-social-actions .btn {
+  min-height: 40px;
+  white-space: nowrap;
+}
+

@@ -1,0 +1,82 @@
+/* Typography, text utilities, and font styles */
+
+.eyebrow {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #a87d00;
+}
+
+.muted-copy {
+  color: var(--muted);
+}
+
+.brand-lockup {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.brand-lockup-tight h1,
+.brand-lockup-tight h2 {
+  margin: 0;
+}
+
+.brand-logo {
+  width: 54px;
+  height: 54px;
+  object-fit: contain;
+  border-radius: 14px;
+  background: #ffffff;
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  padding: 6px;
+}
+
+.auth-shell-aside .eyebrow,
+.auth-shell-copy .eyebrow,
+.auth-card-head .eyebrow,
+.site-hero .eyebrow,
+.dashboard-hero .eyebrow {
+  color: rgba(255, 255, 255, 0.68);
+}
+
+.dashboard-hero .eyebrow,
+.public-hero .eyebrow,
+.card .eyebrow {
+  color: var(--muted);
+}
+
+.editor-profile-header .eyebrow {
+  margin-bottom: 0;
+}
+
+.editor-colors-header .eyebrow {
+  margin-bottom: 0;
+}
+
+.ai-chat-progress .muted-copy {
+  margin: 0;
+  font-size: 12px;
+}
+
+.editor-domain-stack .eyebrow {
+  margin: 0;
+}
+
+.ai-chat-header-copy .muted-copy {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.onboarding-shell-brand .eyebrow {
+  margin: 0;
+}
+
+.onboarding-shell-content-head .muted-copy {
+  margin: 0;
+  max-width: 62ch;
+}
+

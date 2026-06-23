@@ -1,0 +1,105 @@
+/* Background editor styles */
+
+.editor-background-panel,
+.editor-color-shell {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px;
+  background: #ffffff;
+  display: grid;
+  gap: 12px;
+}
+
+.background-mode-picker {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.background-mode-card.is-active {
+  border-color: var(--line-strong);
+  box-shadow: 0 0 0 1px rgba(212, 168, 0, 0.18);
+  color: var(--ink);
+}
+
+.background-mode-icon-ai {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  color: #1d4ed8;
+}
+
+.background-mode-card.is-active .background-mode-icon-ai {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  color: #ffffff;
+}
+
+.ai-background-panel {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.ai-background-panel-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.ai-background-prompt {
+  min-height: 96px;
+  resize: vertical;
+}
+
+.ai-background-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ai-background-generate-btn {
+  margin-left: auto;
+}
+
+.background-mode-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  min-height: 76px;
+  padding: 12px 10px 10px;
+  background: #ffffff;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 8px;
+  cursor: pointer;
+  color: var(--muted);
+}
+
+.background-mode-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #ececec;
+  color: #969696;
+  font-size: 14px;
+}
+
+.background-mode-card.is-active .background-mode-icon {
+  background: var(--ink);
+  color: #ffffff;
+}
+
+.background-mode-label {
+  font-size: 14px;
+}
+
+.editor-background-options {
+  display: grid;
+  gap: 10px;
+}
+

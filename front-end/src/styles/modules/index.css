@@ -1,0 +1,40 @@
+/* Main CSS entry point - imports all modules */
+
+/* Global variables and resets */
+@import "./variables.css";
+
+/* Typography and text utilities */
+@import "./typography.css";
+
+/* Forms and inputs */
+@import "./forms.css";
+@import "./buttons.css";
+
+/* Layouts */
+@import "./layout.css";
+
+/* Page-specific styles */
+@import "./auth.css";
+@import "./public.css";
+
+/* Dashboard styles */
+@import "./dashboard-rail.css";
+@import "./dashboard.css";
+@import "./blocks.css";
+
+/* Editor styles */
+@import "./editor.css";
+@import "./editor-avatar.css";
+@import "./editor-background.css";
+@import "./editor-colors.css";
+@import "./modals.css";
+@import "./domain.css";
+@import "./preview.css";
+@import "./toasts.css";
+
+/* AI and other components */
+@import "./ai-chat.css";
+@import "./social.css";
+
+/* Utilities, animations, and responsive styles */
+@import "./utilities.css";

@@ -1,0 +1,98 @@
+/* Authentication page styles */
+
+.auth-shell-aside {
+  position: relative;
+  overflow: hidden;
+
+  padding: 56px;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 48px;
+}
+
+.auth-shell-aside::before {
+  content: "";
+  position: absolute;
+  inset: -20px;
+  /* tránh lộ viền khi blur */
+  background: url('/img/images/banner.jpg') center / cover no-repeat;
+  filter: blur(8px);
+  z-index: 0;
+}
+
+.auth-shell-aside::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(17, 24, 39, 0.72);
+  z-index: 1;
+}
+
+/* đảm bảo nội dung nổi lên trên */
+.auth-shell-aside>* {
+  position: relative;
+  z-index: 2;
+}
+
+.auth-shell-copy h2,
+.auth-shell-copy p,
+.auth-shell-aside h1,
+.auth-card-head h2,
+.auth-card-head p,
+.site-hero h1,
+.site-hero-copy,
+.dashboard-hero h2,
+.dashboard-hero p {
+  margin-top: 0;
+}
+
+.auth-shell-copy h2,
+.auth-shell-aside h1 {
+  font-size: clamp(2rem, 5vw, 4rem);
+  line-height: 1.05;
+  margin-bottom: 16px;
+}
+
+.auth-shell-copy p,
+.auth-shell-aside p {
+  color: rgba(255, 255, 255, 0.8);
+  max-width: 34rem;
+}
+
+.auth-shell-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  background: #ffffff;
+}
+
+.auth-card {
+  width: min(100%, 520px);
+  padding: 32px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #ffffff;
+  box-shadow: var(--shadow);
+}
+
+.auth-card-head h2,
+.dashboard-hero h2,
+.site-hero h1,
+.page-row strong,
+.dashboard-list-header h3,
+.public-hero h2 {
+  margin: 0 0 8px;
+  font-size: 32px;
+  line-height: 1.1;
+}
+
+.auth-form,
+.page-form {
+  display: grid;
+  gap: 16px;
+  margin-top: 24px;
+}
+

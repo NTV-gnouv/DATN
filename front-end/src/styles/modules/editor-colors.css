@@ -1,0 +1,90 @@
+/* Color editor styles */
+
+.editor-colors-header {
+  display: grid;
+  gap: 10px;
+}
+
+.editor-color-shell .editor-stack {
+  gap: 14px;
+}
+
+.editor-color-group {
+  display: grid;
+  gap: 10px;
+}
+
+.editor-color-group-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.editor-color-list {
+  display: grid;
+  gap: 8px;
+}
+
+.editor-color-row {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.editor-color-row span {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.editor-color-row:hover span {
+  color: var(--ink);
+}
+
+.editor-color-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+}
+
+.editor-color-grid div {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 10px;
+  display: grid;
+  gap: 6px;
+}
+
+.editor-color-grid label {
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.editor-color-grid label span {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.editor-color-grid label:hover {
+  color: var(--ink);
+}
+
+.editor-color-grid label:hover span {
+  color: var(--ink);
+}
+
+.editor-color-grid code {
+  background: var(--panel);
+  padding: 4px 6px;
+  border-radius: var(--radius);
+  font-size: 12px;
+}
+

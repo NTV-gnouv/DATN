@@ -1,0 +1,29 @@
+/* CSS variables, color schemes, and root styles */
+
+:root {
+  color-scheme: light;
+  --bg: #fffcf0;
+  --panel: #fff8dc;
+  --panel-strong: #fff2bf;
+  --ink: #111827;
+  --muted: #6b7280;
+  --line: #f1e1a3;
+  --line-strong: #d4a800;
+  --black: #111827;
+  --green: #d4a800;
+  --green-dark: #a87d00;
+  --danger: #e52020;
+  --radius: 12px;
+  --shadow: 0 12px 24px rgba(17, 24, 39, 0.08);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+

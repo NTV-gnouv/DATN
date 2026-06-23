@@ -1,0 +1,102 @@
+/* Preview and phone frame styles */
+
+.editor-preview-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.editor-preview-top strong {
+  font-size: 18px;
+}
+
+.editor-preview-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: nowrap;
+  align-items: center;
+}
+
+.phone-preview {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+  margin-bottom: 12px;
+}
+
+.phone-preview-screen {
+  width: 263px;
+  height: 570px;
+  min-height: 570px;
+  max-height: 570px;
+  max-width: 100%;
+  border: 2px solid var(--black);
+  border-radius: 24px;
+  background: #ffffff;
+  padding: var(--theme-preview-padding-y, 16px) var(--theme-preview-padding-x, 12px);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--theme-preview-gap, 12px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  box-sizing: border-box;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.phone-preview-screen::-webkit-scrollbar,
+.public-preview-screen::-webkit-scrollbar,
+.mobile-theme-canvas::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+.phone-preview-screen>*:not(.phone-avatar):not(.profile-header) {
+  flex-shrink: 0;
+  width: 100%;
+}
+
+.phone-preview-screen h4,
+.public-preview-screen .profile-header.is-layout-stacked h4 {
+  margin: 2px 0 0;
+  font-size: var(--theme-title-size, 18px);
+  font-weight: 700;
+  line-height: 1.15;
+  text-align: center;
+  max-width: 100%;
+  align-self: center;
+  word-break: break-word;
+}
+
+.phone-preview-screen p {
+  margin: 0;
+  color: var(--muted);
+  text-align: center;
+  font-size: var(--theme-bio-size, 13px);
+  font-weight: 400;
+  line-height: 1.4;
+  align-self: center;
+  word-break: break-word;
+}
+
+.ai-chat-phone-pane .phone-preview {
+  margin-top: 0;
+  margin-bottom: 0;
+  width: 100%;
+}
+
+.phone-preview-screen h4,
+.public-preview-screen h4 {
+  margin: 0 0 6px;
+}
+
+.phone-preview-screen p,
+.public-preview-screen p {
+  margin: 0 0 10px;
+}
+

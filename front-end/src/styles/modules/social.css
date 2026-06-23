@@ -1,0 +1,65 @@
+/* Social links editor */
+
+.social-links-list {
+  display: grid;
+  gap: 10px;
+}
+
+.social-links-hint {
+  margin: 0 0 4px;
+  font-size: 12px;
+}
+
+.social-link-row-featured {
+  grid-template-columns: minmax(108px, 132px) minmax(0, 1fr);
+}
+
+.social-link-platform-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.social-links-extra {
+  display: grid;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.social-links-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 0;
+  cursor: pointer;
+  justify-self: start;
+}
+
+.social-links-toggle-icon {
+  transition: transform 0.18s ease;
+}
+
+.social-links-toggle-icon.is-open {
+  transform: rotate(180deg);
+}
+
+.social-link-row {
+  display: grid;
+  grid-template-columns: minmax(130px, 180px) minmax(0, 1fr) 40px;
+  gap: 8px;
+  align-items: center;
+}
+
+.social-platform-select,
+.social-link-input {
+  margin: 0;
+}
+

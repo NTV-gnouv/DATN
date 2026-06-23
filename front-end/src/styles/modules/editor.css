@@ -1,0 +1,245 @@
+/* Editor layout and components */
+
+.editor-layout {
+  display: grid;
+  grid-template-columns: 1.6fr 0.9fr;
+  gap: 20px;
+}
+
+.editor-left-pane {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.editor-stack {
+  display: grid;
+  gap: 12px;
+}
+
+.editor-subpanel {
+  display: grid;
+  gap: 12px;
+}
+
+.editor-profile-panel {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.editor-profile-header {
+  display: grid;
+  gap: 4px;
+}
+
+.editor-profile-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.editor-profile-grid label {
+  display: grid;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.editor-profile-summary {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 0 4px;
+}
+
+.editor-profile-copy {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  flex: 1;
+}
+
+.editor-profile-copy strong {
+  font-size: 16px;
+  line-height: 1.2;
+}
+
+.editor-profile-copy p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.editor-profile-edit-button {
+  flex-shrink: 0;
+  min-height: 38px;
+  padding: 0 14px;
+}
+
+.editor-social-icon-size {
+  margin-bottom: 14px;
+}
+
+.editor-section-divider {
+  height: 1px;
+  background: var(--line);
+  margin: 18px 0;
+}
+
+.editor-right-pane {
+  position: sticky;
+  top: 16px;
+  align-self: start;
+}
+
+.editor-section:first-of-type {
+  margin-bottom: 4px;
+}
+
+.editor-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.editor-form-grid label {
+  display: grid;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.editor-image-preview {
+  width: 100%;
+  min-height: 88px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background-color: #f8fafc;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.editor-right-pane-shell {
+  display: grid;
+  gap: 14px;
+}
+
+.editor-quick-btn {
+  background: rgba(255, 255, 255, 0.78);
+  border-color: var(--line);
+  box-shadow: 0 6px 16px rgba(17, 24, 39, 0.06);
+}
+
+.editor-share-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 82px;
+  padding: 0 12px !important;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 12px;
+}
+
+.editor-social-display-section {
+  margin-bottom: 4px;
+}
+
+.editor-social-style-picker {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.editor-social-style-option {
+  display: grid;
+  gap: 8px;
+  justify-items: stretch;
+  min-height: 108px;
+  padding: 8px 6px 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #fff;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.editor-social-style-option.is-active {
+  border-color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--ink);
+}
+
+.editor-social-style-label {
+  font-size: 11px;
+  font-weight: 500;
+  text-align: center;
+  line-height: 1.25;
+  color: var(--muted);
+}
+
+.editor-social-style-option.is-active .editor-social-style-label {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.editor-social-style-preview-shell {
+  display: grid;
+  align-content: center;
+  min-height: 64px;
+  padding: 6px 4px;
+}
+
+.editor-social-style-live-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.editor-social-style-live-preview.is-buttons {
+  flex-direction: column;
+  gap: 5px;
+}
+
+.editor-social-style-live-preview.is-both {
+  flex-direction: column;
+  gap: 6px;
+}
+
+.editor-social-style-live-icons-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.editor-social-style-live-icon {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: currentColor;
+  opacity: 0.9;
+  flex-shrink: 0;
+}
+
+.editor-social-style-live-button {
+  display: block;
+  width: 100%;
+  height: 12px;
+  min-height: 12px;
+  box-sizing: border-box;
+}
+
+.editor-social-style-hint {
+  margin: 0 0 8px;
+}
+

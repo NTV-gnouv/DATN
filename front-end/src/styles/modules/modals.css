@@ -1,0 +1,104 @@
+/* Modal dialogs */
+
+.editor-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(17, 17, 17, 0.38);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 18px;
+  overflow-y: auto;
+  z-index: 1300;
+}
+
+.editor-modal {
+  width: min(560px, 100%);
+  max-height: min(calc(100vh - 36px), 720px);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #ffffff;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 18px;
+  overflow: hidden;
+  margin: auto;
+}
+
+.editor-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+.editor-modal-header h3 {
+  margin: 2px 0 0;
+  font-size: 18px;
+}
+
+.editor-modal-close {
+  min-height: 34px;
+  min-width: 34px;
+  padding: 0;
+}
+
+.editor-modal-body {
+  display: grid;
+  gap: 16px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding-right: 2px;
+}
+
+.editor-modal-section {
+  display: grid;
+  gap: 10px;
+}
+
+.editor-modal-section-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.editor-modal-photo-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.editor-social-icon-size .editor-modal-section-title {
+  margin: 0 0 8px;
+}
+
+.editor-modal-photo-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.editor-modal-photo-copy strong {
+  font-size: 15px;
+}
+
+.editor-modal-photo-copy p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.editor-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-shrink: 0;
+  padding-top: 4px;
+  border-top: 1px solid var(--line);
+}
+

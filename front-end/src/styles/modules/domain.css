@@ -1,0 +1,66 @@
+/* Domain/slug editor */
+
+.editor-domain-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 10px;
+}
+
+.editor-domain-stack {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.editor-domain-control {
+  width: 100%;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0 10px;
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: 0 6px 18px rgba(17, 24, 39, 0.06);
+}
+
+.editor-domain-prefix {
+  font-size: 14px;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.editor-domain-input {
+  min-height: 36px;
+  border: 0;
+  background: transparent;
+  padding: 0 4px;
+  margin: 0;
+  box-shadow: none;
+  border-radius: 8px;
+}
+
+.editor-domain-input:focus {
+  border: 0;
+  box-shadow: none;
+}
+
+.editor-domain-slug {
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 700;
+  min-height: 34px;
+  padding: 0 4px;
+  cursor: pointer;
+}
+
+.editor-slug-inline-input {
+  max-width: 260px;
+  min-height: 38px;
+  margin: 0;
+}
+
