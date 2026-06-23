@@ -3829,7 +3829,8 @@ a {
 }
 
 .onboarding-shell {
-  min-height: 100vh;
+  height: 100vh;
+  overflow-y: hidden;
   display: grid;
   grid-template-rows: auto 1fr;
   gap: 20px;
@@ -3860,9 +3861,9 @@ a {
 }
 
 .onboarding-shell-rail {
-  position: sticky;
-  top: 24px;
-  display: grid;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
   gap: 14px;
   padding: 18px;
   border: 1px solid var(--line, #e5e5e5);
@@ -3934,7 +3935,8 @@ a {
 }
 
 .onboarding-shell-body {
-  min-height: 0;
+  height: 100%;
+  overflow-y: auto;
   display: grid;
   gap: 18px;
   align-content: start;
