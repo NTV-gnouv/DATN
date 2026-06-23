@@ -29,7 +29,7 @@ body {
   margin: 0;
   background: linear-gradient(180deg, #fffcf0 0%, #fffef7 45%, #fffcf0 100%);
   color: var(--ink);
-  font-family: 'IBM Plex Mono', Inter, Arial, Helvetica, sans-serif;
+  font-family: 'Poppins', Inter, Arial, Helvetica, sans-serif;
   line-height: 1.5;
 }
 
@@ -76,7 +76,7 @@ a {
 .auth-shell,
 .dashboard-shell,
 .site-shell {
-  min-height: 100vh;
+  height: 100vh;
 }
 
 .auth-shell {
@@ -85,15 +85,39 @@ a {
 }
 
 .auth-shell-aside {
+  position: relative;
+  overflow: hidden;
+
   padding: 56px;
-  background:
-    linear-gradient(rgba(17, 24, 39, 0.72), rgba(17, 24, 39, 0.72)),
-    url('/img/images/banner.jpg') center / cover no-repeat;
-  color: #ffffff;
+  color: #fff;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   gap: 48px;
+}
+
+.auth-shell-aside::before {
+  content: "";
+  position: absolute;
+  inset: -20px;
+  /* tránh lộ viền khi blur */
+  background: url('/img/images/banner.jpg') center / cover no-repeat;
+  filter: blur(8px);
+  z-index: 0;
+}
+
+.auth-shell-aside::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(17, 24, 39, 0.72);
+  z-index: 1;
+}
+
+/* đảm bảo nội dung nổi lên trên */
+.auth-shell-aside>* {
+  position: relative;
+  z-index: 2;
 }
 
 .auth-shell-aside .eyebrow,
@@ -282,7 +306,9 @@ a {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .editor-avatar-upload-row {
@@ -375,6 +401,7 @@ a {
     height: 72px;
   }
 }
+
 .field-hint {
   color: var(--muted);
 }
@@ -2483,7 +2510,7 @@ a {
   -ms-overflow-style: none;
 }
 
-.phone-preview-screen > *:not(.phone-avatar):not(.profile-header) {
+.phone-preview-screen>*:not(.phone-avatar):not(.profile-header) {
   flex-shrink: 0;
   width: 100%;
 }
@@ -2901,6 +2928,7 @@ a {
     flex-direction: column;
     align-items: stretch;
   }
+
   .editor-profile-grid,
   .editor-color-grid,
   .background-mode-picker,
@@ -2915,6 +2943,7 @@ a {
 }
 
 @media (max-width: 720px) {
+
   .auth-shell-panel,
   .dashboard-stage,
   .site-shell {
@@ -2972,57 +3001,71 @@ a {
 }
 
 /* Theme preview styles */
-.theme-preview-row{
-  display:grid;
-  grid-template-columns:repeat(2, minmax(0, 1fr));
-  gap:12px;
-  max-height:min(520px, 58vh);
-  overflow-y:auto;
-  overflow-x:hidden;
-  padding:8px 6px 14px 0;
-  margin-right:-4px;
-  scrollbar-gutter:stable;
-  scrollbar-width:thin;
-  scrollbar-color:rgba(15,23,42,0.28) transparent;
+.theme-preview-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  max-height: min(520px, 58vh);
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 8px 6px 14px 0;
+  margin-right: -4px;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(15, 23, 42, 0.28) transparent;
 }
-.theme-preview-row::-webkit-scrollbar{
-  width:8px;
+
+.theme-preview-row::-webkit-scrollbar {
+  width: 8px;
 }
-.theme-preview-row::-webkit-scrollbar-thumb{
-  background:rgba(15,23,42,0.22);
-  border-radius:999px;
+
+.theme-preview-row::-webkit-scrollbar-thumb {
+  background: rgba(15, 23, 42, 0.22);
+  border-radius: 999px;
 }
-.theme-preview-row::-webkit-scrollbar-track{
-  background:transparent;
+
+.theme-preview-row::-webkit-scrollbar-track {
+  background: transparent;
 }
-.theme-card{
-  width:100%;
+
+.theme-card {
+  width: 100%;
   appearance: none;
-  border:1px solid rgba(15,23,42,0.08);
-  background:var(--card-bg, #fff);
-  border-radius:12px;
-  box-shadow:0 6px 18px rgba(16,24,40,0.06);
-  padding:8px;
-  flex:0 0 auto;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: var(--card-bg, #fff);
+  border-radius: 12px;
+  box-shadow: 0 6px 18px rgba(16, 24, 40, 0.06);
+  padding: 8px;
+  flex: 0 0 auto;
   text-align: left;
   cursor: pointer;
   transition: transform 0.14s ease, box-shadow 0.14s ease, border-color 0.14s ease;
 }
-.theme-card:hover{transform:translateY(-1px);box-shadow:0 10px 20px rgba(16,24,40,0.10);}
-.theme-card.is-selected{border-color:var(--line-strong);box-shadow:0 0 0 2px rgba(212,168,0,0.16),0 10px 22px rgba(16,24,40,0.12);}
-.theme-card img{
-  width:100%;
-  height:120px;
-  object-fit:cover;
-  border-radius:8px;
-  display:block;
+
+.theme-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px rgba(16, 24, 40, 0.10);
 }
-.theme-name{
-  margin-top:8px;
-  font-size:14px;
-  text-align:center;
-  color:var(--muted,#475569);
-  font-weight:600;
+
+.theme-card.is-selected {
+  border-color: var(--line-strong);
+  box-shadow: 0 0 0 2px rgba(212, 168, 0, 0.16), 0 10px 22px rgba(16, 24, 40, 0.12);
+}
+
+.theme-card img {
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 8px;
+  display: block;
+}
+
+.theme-name {
+  margin-top: 8px;
+  font-size: 14px;
+  text-align: center;
+  color: var(--muted, #475569);
+  font-weight: 600;
 }
 
 /* Public Landing Page - mobile-first theme canvas */
@@ -3041,9 +3084,11 @@ a {
   padding: 0 !important;
   background: transparent !important;
 }
+
 .site-shell.site-shell--public .site-content {
   padding: 0 !important;
 }
+
 .site-shell.site-shell--public .site-hero {
   display: none !important;
 }
@@ -3056,8 +3101,7 @@ a {
   border-radius: 0 !important;
   background: transparent !important;
   box-shadow: none !important;
-  padding: max(16px, env(safe-area-inset-top, 0px)) max(14px, env(safe-area-inset-right, 0px))
-    max(24px, env(safe-area-inset-bottom, 0px)) max(14px, env(safe-area-inset-left, 0px)) !important;
+  padding: max(16px, env(safe-area-inset-top, 0px)) max(14px, env(safe-area-inset-right, 0px)) max(24px, env(safe-area-inset-bottom, 0px)) max(14px, env(safe-area-inset-left, 0px)) !important;
   height: auto !important;
   min-height: 100vh;
   max-height: none !important;
@@ -3069,13 +3113,13 @@ a {
   margin: 0;
 }
 
-.public-landing-page .public-preview-screen > *:not(.phone-avatar):not(.profile-header) {
+.public-landing-page .public-preview-screen>*:not(.phone-avatar):not(.profile-header) {
   flex-shrink: 0;
   width: 100%;
 }
 
 .public-landing-page .public-preview-screen h4,
-.public-landing-page .public-preview-screen > p,
+.public-landing-page .public-preview-screen>p,
 .public-landing-page .public-preview-screen .phone-avatar,
 .public-landing-page .public-preview-screen .profile-avatar,
 .public-landing-page .public-preview-screen .phone-social-icons {
@@ -3098,7 +3142,7 @@ a {
   align-self: flex-start;
 }
 
-.public-landing-page .public-preview-screen > p {
+.public-landing-page .public-preview-screen>p {
   font-size: var(--theme-bio-size, clamp(13px, 3.8vw, 15px));
   text-align: center;
 }
@@ -3114,9 +3158,9 @@ a {
 .public-landing-page .content-review-block,
 .public-landing-page .landing-contact-form,
 .public-landing-page .phone-social-buttons,
-.public-landing-page .profile-social-section > .phone-social-icons,
-.public-landing-page .public-preview-screen > .phone-link-card,
-.public-landing-page .public-preview-screen > .phone-content-card:not(.phone-social-button) {
+.public-landing-page .profile-social-section>.phone-social-icons,
+.public-landing-page .public-preview-screen>.phone-link-card,
+.public-landing-page .public-preview-screen>.phone-content-card:not(.phone-social-button) {
   width: var(--block-shell-width, 100%);
   max-width: 100%;
   margin-inline: auto;
@@ -3127,8 +3171,7 @@ a {
   .public-landing-page .public-preview-screen {
     width: 100%;
     min-height: auto;
-    padding: max(14px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px))
-      max(20px, env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px)) !important;
+    padding: max(14px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) max(20px, env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px)) !important;
   }
 }
 
@@ -3154,7 +3197,7 @@ a {
   -ms-overflow-style: none;
 }
 
-.public-preview-screen > *:not(.phone-avatar):not(.profile-header) {
+.public-preview-screen>*:not(.phone-avatar):not(.profile-header) {
   flex-shrink: 0;
   width: 100%;
 }
@@ -3203,7 +3246,7 @@ a {
   word-break: break-word;
 }
 
-.public-preview-screen > p {
+.public-preview-screen>p {
   margin: 0;
   color: var(--muted);
   text-align: center;
@@ -5654,6 +5697,7 @@ a {
 }
 
 @media (max-width: 900px) {
+
   .content-block-settings-grid,
   .content-link-layout-grid {
     grid-template-columns: 1fr;
@@ -7024,6 +7068,7 @@ a {
 }
 
 @media (max-width: 900px) {
+
   .content-review-layout-grid,
   .content-review-meta-grid,
   .content-review-editor-row {
