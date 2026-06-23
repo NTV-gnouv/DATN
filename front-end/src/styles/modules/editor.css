@@ -10,6 +10,8 @@
   display: grid;
   gap: 16px;
   min-width: 0;
+  padding-right: 16px;
+  border-right: 1px solid var(--line);
 }
 
 .editor-stack {
@@ -242,4 +244,3 @@
 .editor-social-style-hint {
   margin: 0 0 8px;
 }
-

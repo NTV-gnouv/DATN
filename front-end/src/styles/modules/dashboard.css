@@ -3,6 +3,7 @@
 .dashboard-stage {
   padding: 32px;
   min-width: 0;
+  overflow-y: auto;
 }
 
 .dashboard-blocks-page {
@@ -311,4 +312,3 @@
 .dashboard-builder-layout {
   align-items: start;
 }
-

@@ -16,11 +16,10 @@
   grid-template-columns: 248px minmax(0, 1fr);
   background: transparent;
   min-height: 100vh;
-  overflow-x: clip;
+  overflow: hidden;
 }
 
 .site-shell {
   padding: 24px;
   background: var(--bg);
 }
-
