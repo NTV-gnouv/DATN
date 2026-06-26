@@ -2,8 +2,7 @@ import { useEffect, useState } from 'react';
 
 import type { LandingPage } from '@/models/page.model';
 import { loadSession } from '@/services/auth.service';
-import { getPageByUsername } from '@/services/pages.service';
-import { getAccountUsernames } from '@/utils/onboarding';
+import { getMyPage } from '@/services/pages.service';
 
 export function useDashboardPage() {
   const session = loadSession();
@@ -16,26 +15,9 @@ export function useDashboardPage() {
 
     void (async () => {
       try {
-        const accountUsernames = getAccountUsernames(session);
-
-        let loadedPage: LandingPage | null = null;
-        for (const username of accountUsernames) {
-          const byUsername = await getPageByUsername(username);
-          if (byUsername && byUsername.status !== 'missing') {
-            loadedPage = byUsername;
-            break;
-          }
-        }
-
-        if (!loadedPage) {
-          if (!cancelled) {
-            setPage(null);
-          }
-          return;
-        }
-
+        const loadedPage = await getMyPage();
         if (!cancelled) {
-          setPage(loadedPage);
+          setPage(loadedPage?.id ? loadedPage : null);
         }
       } catch (caughtError) {
         if (!cancelled) {
@@ -51,7 +33,7 @@ export function useDashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, [session?.user?.email, session?.user?.name]);
+  }, [session?.user?.id]);
 
   const ownerId =
     String((session?.user as { id?: string } | undefined)?.id ?? session?.user?.email ?? 'anonymous').trim() || 'anonymous';

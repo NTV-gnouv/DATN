@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 
 import { ContentBlockRenderer } from '@/components/blocks/ContentBlockRenderer';
 import { ContactFormBlockPreview, getContactFormBlockConfig } from '@/components/blocks/ContactFormBlockPreview';
@@ -11,6 +11,7 @@ import { isRenderablePreviewBlock } from '@/utils/page-blocks';
 import { getThemeEffectsConfig } from '@/utils/theme-effects';
 import { resolveThemePreviewMetrics } from '@/utils/theme-preview-metrics';
 import { buildPageBackgroundStyle } from '@/utils/page-background';
+import { createDefaultPageBackground } from '@/utils/normalize-header-block';
 import { buildContactFormPreviewStyles } from '@/utils/contact-form-surface';
 import { getBlockShellStyle } from '@/utils/block-render-context';
 import { buildSocialBlockStyleFromHeader } from '@/utils/social-surface';
@@ -42,48 +43,75 @@ export function PhonePagePreview({
   bioOverride,
   avatarOverride,
 }: PhonePagePreviewProps) {
+  const screenRef = useRef<HTMLDivElement | null>(null);
   const activeHeaderBlock = headerBlock;
+
+  useEffect(() => {
+    const screen = screenRef.current;
+    if (!screen) {
+      return;
+    }
+
+    function onWheel(event: WheelEvent) {
+      const node = screen;
+      if (!node) {
+        return;
+      }
+
+      const { scrollTop, scrollHeight, clientHeight } = node;
+      const deltaY = event.deltaY;
+      const maxScrollTop = scrollHeight - clientHeight;
+      const canScrollUp = scrollTop > 0.5;
+      const canScrollDown = scrollTop < maxScrollTop - 0.5;
+
+      if (scrollHeight <= clientHeight + 1) {
+        return;
+      }
+
+      if ((deltaY < 0 && canScrollUp) || (deltaY > 0 && canScrollDown)) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    }
+
+    screen.addEventListener('wheel', onWheel, { passive: false });
+    return () => screen.removeEventListener('wheel', onWheel);
+  }, [page, headerBlock, themeTokens]);
   const previewTitle =
     (hasText(displayNameOverride) ? displayNameOverride : '') ||
-    (activeHeaderBlock && hasText(activeHeaderBlock.fields.profile.displayName)
-      ? activeHeaderBlock.fields.profile.displayName
+    (hasText(activeHeaderBlock?.fields?.profile?.displayName)
+      ? activeHeaderBlock?.fields?.profile?.displayName
       : '');
   const previewBio =
     (hasText(bioOverride) ? bioOverride : '') ||
-    (activeHeaderBlock && hasText(activeHeaderBlock.fields.profile.bio) ? activeHeaderBlock.fields.profile.bio : '');
-  const socialItems = activeHeaderBlock
+    (hasText(activeHeaderBlock?.fields?.profile?.bio) ? activeHeaderBlock?.fields?.profile?.bio : '');
+  const socialItems = activeHeaderBlock?.fields?.socials?.items
     ? activeHeaderBlock.fields.socials.items.filter((item) => hasText(item.url) || hasText(item.iconUrl))
     : [];
   const previewBlocks = (page?.blocks ?? []).filter((block) => isRenderablePreviewBlock(block, String(page?.title ?? '')));
-  const avatarDisplayStyle = resolveAvatarDisplayStyle(activeHeaderBlock?.fields.profile);
+  const avatarDisplayStyle = resolveAvatarDisplayStyle(activeHeaderBlock?.fields?.profile);
   const avatarUrl =
     (hasText(avatarOverride) ? avatarOverride : '') ||
-    (activeHeaderBlock?.fields.profile.avatarUrl ?? '');
-  const avatarSize = activeHeaderBlock?.fields.profile.avatarSize ?? 96;
-  const displayNameSize = activeHeaderBlock?.fields.profile.displayNameSize;
-  const pageBackground: PageBackground = activeHeaderBlock?.fields.colors.pageBackground ?? {
-    mode: 'solid',
-    solid: '#ffffff',
-    gradient: { start: '#ffffff', end: '#cbd5e1', type: 'linear' },
-    imageUrl: '',
-    overlayColor: '#000000',
-    overlayOpacity: 0,
-  };
-  const headerColor = activeHeaderBlock?.fields.colors.headerTextAndIcon ?? '#111111';
-  const socialBg = activeHeaderBlock?.fields.colors.socialBlockBackground ?? '#f5f5f5';
-  const socialText = activeHeaderBlock?.fields.colors.socialBlockText ?? '#111111';
-  const socialIconSize = clampSocialIconSize(activeHeaderBlock?.fields.socials.iconSize);
-  const contentBg = activeHeaderBlock?.fields.colors.contentBlockBackground ?? '#ffffff';
-  const contentText = activeHeaderBlock?.fields.colors.contentBlockText ?? '#111111';
-  const buttonColor = activeHeaderBlock?.fields.colors.contentBlockButton ?? '#111111';
-  const divWidth = activeHeaderBlock?.fields.divLayout.widthPercent ?? 100;
-  const border = activeHeaderBlock?.fields.divLayout.border ?? {
+    (activeHeaderBlock?.fields?.profile?.avatarUrl ?? '');
+  const avatarSize = activeHeaderBlock?.fields?.profile?.avatarSize ?? 96;
+  const displayNameSize = activeHeaderBlock?.fields?.profile?.displayNameSize;
+  const pageBackground: PageBackground =
+    activeHeaderBlock?.fields?.colors?.pageBackground ?? createDefaultPageBackground();
+  const headerColor = activeHeaderBlock?.fields?.colors?.headerTextAndIcon ?? '#111111';
+  const socialBg = activeHeaderBlock?.fields?.colors?.socialBlockBackground ?? '#f5f5f5';
+  const socialText = activeHeaderBlock?.fields?.colors?.socialBlockText ?? '#111111';
+  const socialIconSize = clampSocialIconSize(activeHeaderBlock?.fields?.socials?.iconSize);
+  const contentBg = activeHeaderBlock?.fields?.colors?.contentBlockBackground ?? '#ffffff';
+  const contentText = activeHeaderBlock?.fields?.colors?.contentBlockText ?? '#111111';
+  const buttonColor = activeHeaderBlock?.fields?.colors?.contentBlockButton ?? '#111111';
+  const divWidth = activeHeaderBlock?.fields?.divLayout?.widthPercent ?? 100;
+  const border = activeHeaderBlock?.fields?.divLayout?.border ?? {
     width: 1,
     style: 'solid' as const,
     color: '#cccccc',
     radius: 2,
   };
-  const shadow = activeHeaderBlock?.fields.divLayout.boxShadow ?? {
+  const shadow = activeHeaderBlock?.fields?.divLayout?.boxShadow ?? {
     enabled: false,
     x: 0,
     y: 6,
@@ -139,17 +167,18 @@ export function PhonePagePreview({
   return (
     <div className="phone-preview phone-review">
       {themeEffects?.css ? <style>{themeEffects.css}</style> : null}
-      <div
-        className={`phone-preview-screen mobile-theme-canvas${themeEffects?.className ? ` ${themeEffects.className}` : ''}`}
-        style={{
-          ...previewBackgroundStyle,
-          color: headerColor,
-          fontFamily: pageTypography.bodyFontStack,
-          lineHeight: pageTypography.lineHeight,
-          ...getThemeTypographyCssVars(pageTypography),
-          ...previewMetrics.cssVars,
-        }}
-      >
+      <div ref={screenRef} className="phone-preview-screen">
+        <div
+          className={`phone-preview-canvas mobile-theme-canvas${themeEffects?.className ? ` ${themeEffects.className}` : ''}`}
+          style={{
+            ...previewBackgroundStyle,
+            color: headerColor,
+            fontFamily: pageTypography.bodyFontStack,
+            lineHeight: pageTypography.lineHeight,
+            ...getThemeTypographyCssVars(pageTypography),
+            ...previewMetrics.cssVars,
+          }}
+        >
         <ProfileHeaderSection
           avatarUrl={avatarUrl}
           avatarDisplayStyle={avatarDisplayStyle}
@@ -162,7 +191,7 @@ export function PhonePagePreview({
           socialItems={socialItems}
           socialIconSize={socialIconSize}
           socialLabelFontSize={previewMetrics.socialLabelFontSize}
-          socialDisplayMode={activeHeaderBlock?.fields.socials.displayMode}
+          socialDisplayMode={activeHeaderBlock?.fields?.socials?.displayMode}
           socialBlockStyle={socialBlockStyle}
         />
 
@@ -256,6 +285,7 @@ export function PhonePagePreview({
         })}
         {loading ? <p className="muted-copy">Đang tải preview...</p> : null}
         {error ? <p className="field-error">{error}</p> : null}
+        </div>
       </div>
     </div>
   );

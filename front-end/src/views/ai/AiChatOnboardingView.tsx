@@ -4,20 +4,24 @@ import { useNavigate } from 'react-router-dom';
 
 import { AiChatBubble } from '@/components/ai-chat/AiChatBubble';
 import { AiChatSocialForm, type SocialFormErrors, type SocialFormValues } from '@/components/ai-chat/AiChatSocialForm';
+import { AiStylePicker } from '@/components/ai-chat/AiStylePicker';
 import { DashboardPreviewPaneShell } from '@/components/dashboard/DashboardPreviewPane';
 import { DashboardShell } from '@/components/layout/DashboardShell';
 import { OnboardingShell } from '@/components/layout/OnboardingShell';
 import { Card } from '@/components/ui/Card';
 import { useAuth } from '@/hooks/useAuth';
 import { createChatMessage, type ChatRenderableMessage } from '@/hooks/useTypingText';
-import type { HeaderBlock, PageBackground } from '@/models/editor.model';
+import type { HeaderBlock } from '@/models/editor.model';
+import { normalizeHeaderBlock } from '@/utils/normalize-header-block';
 import type { LandingPage } from '@/models/page.model';
 import { loadSession } from '@/services/auth.service';
 import { getDefaultHeaderBlock } from '@/services/editor.service';
-import { getPageById, getPageByUsername, getPageEditorConfig } from '@/services/pages.service';
+import { getPageById, getMyPage, getPageEditorConfig } from '@/services/pages.service';
 import { clearOnboardingPageId, getOnboardingPageId } from '@/utils/onboarding';
+import { pageOwnedByUser } from '@/utils/page-ownership';
 import {
   AI_CHAT_SUGGESTED_DESCRIPTION,
+  applyAiChatStyle,
   generateAiChatLandingPage,
   goBackAiChat,
   sendAiChatMessage,
@@ -26,7 +30,13 @@ import {
   type AiChatInputType,
   type AiChatSession,
   type AiChatSocialPrefill,
+  type AiChatStyleOption,
 } from '@/services/ai-chat.service';
+import { mergeStyleOptionPreview } from '@/utils/ai-style-preview';
+import {
+  applySocialHandlesToHeaderBlock,
+  socialHandlesFromAnswers,
+} from '@/utils/social-header';
 
 function normalizeSlug(value: string) {
   return String(value || '')
@@ -66,55 +76,31 @@ function mapSocialPrefill(prefill: AiChatSocialPrefill): SocialFormValues {
   };
 }
 
-function createDefaultPageBackground(): PageBackground {
-  return {
-    mode: 'solid',
-    solid: '#ffffff',
-    gradient: {
-      start: '#ffffff',
-      end: '#cbd5e1',
-      type: 'linear',
-    },
-    imageUrl: '',
-    overlayColor: '#000000',
-    overlayOpacity: 0,
-  };
-}
-
-function normalizeHeaderBlock(headerBlock: HeaderBlock): HeaderBlock {
-  return {
-    ...headerBlock,
-    fields: {
-      ...headerBlock.fields,
-      colors: {
-        ...headerBlock.fields.colors,
-        pageBackground: headerBlock.fields.colors.pageBackground ?? createDefaultPageBackground(),
-      },
-    },
-  };
-}
-
-async function loadPreviewPage(pageId?: string, usernames: string[] = []) {
-  if (pageId) {
-    const page = await getPageById(pageId);
-    if (page?.id && page.status !== 'missing') {
-      const config = await getPageEditorConfig(page.id);
-      const fallbackHeader = await getDefaultHeaderBlock();
-      return {
-        page,
-        headerBlock: normalizeHeaderBlock((config?.headerBlock as HeaderBlock | null) ?? fallbackHeader),
-        themeTokens: (config?.themeTokens as Record<string, unknown> | null | undefined) ?? null,
-      };
+async function loadPreviewPage(pageId: string | undefined, userId: string) {
+  if (pageId && userId) {
+    try {
+      const page = await getPageById(pageId);
+      if (pageOwnedByUser(page, userId)) {
+        const config = await getPageEditorConfig(page.id);
+        const fallbackHeader = await getDefaultHeaderBlock();
+        return {
+          page,
+          headerBlock: normalizeHeaderBlock((config?.headerBlock as HeaderBlock | null) ?? fallbackHeader),
+          themeTokens: (config?.themeTokens as Record<string, unknown> | null | undefined) ?? null,
+        };
+      }
+    } catch {
+      // Ignore and fall through to owned page lookup.
     }
   }
 
-  for (const candidate of usernames) {
-    const byUsername = await getPageByUsername(candidate);
-    if (byUsername?.id && byUsername.status !== 'missing') {
-      const config = await getPageEditorConfig(byUsername.id);
+  if (userId) {
+    const ownedPage = await getMyPage();
+    if (pageOwnedByUser(ownedPage, userId)) {
+      const config = await getPageEditorConfig(ownedPage.id);
       const fallbackHeader = await getDefaultHeaderBlock();
       return {
-        page: byUsername,
+        page: ownedPage,
         headerBlock: normalizeHeaderBlock((config?.headerBlock as HeaderBlock | null) ?? fallbackHeader),
         themeTokens: (config?.themeTokens as Record<string, unknown> | null | undefined) ?? null,
       };
@@ -151,12 +137,17 @@ export default function AiChatOnboardingView({ mode = 'dashboard' }: { mode?: 'd
   const [socialFormError, setSocialFormError] = useState('');
   const [socialPrefill, setSocialPrefill] = useState<SocialFormValues | undefined>();
   const [backing, setBacking] = useState(false);
+  const [styleOptions, setStyleOptions] = useState<AiChatStyleOption[]>([]);
+  const [awaitingStyleChoice, setAwaitingStyleChoice] = useState(false);
+  const [selectedStyleId, setSelectedStyleId] = useState('');
+  const [hoveredStyleId, setHoveredStyleId] = useState('');
+  const [applyingStyle, setApplyingStyle] = useState(false);
   const [previewAvatarUrl, setPreviewAvatarUrl] = useState('');
   const [draftPageId] = useState(() => (isOnboarding ? getOnboardingPageId() : ''));
   const [pageId, setPageId] = useState('');
   const [previewPage, setPreviewPage] = useState<LandingPage | null>(null);
+  const [serverPreviewHeaderBlock, setServerPreviewHeaderBlock] = useState<HeaderBlock | null>(null);
   const [previewHeaderBlock, setPreviewHeaderBlock] = useState<HeaderBlock | null>(null);
-  const [basePreviewHeaderBlock, setBasePreviewHeaderBlock] = useState<HeaderBlock | null>(null);
   const [previewThemeTokens, setPreviewThemeTokens] = useState<Record<string, unknown> | null>(null);
   const [previewLoading, setPreviewLoading] = useState(true);
   const [previewError, setPreviewError] = useState('');
@@ -188,15 +179,25 @@ export default function AiChatOnboardingView({ mode = 'dashboard' }: { mode?: 'd
     return fromName || fromEmail || 'creator';
   }, [authSession?.user?.email, authSession?.user?.name]);
 
-  const accountUsernames = useMemo(() => {
-    const usernameFromName = normalizeSlug(authSession?.user?.name || '');
-    const usernameFromEmail = normalizeSlug(authSession?.user?.email?.split('@')[0] || '');
-    return [usernameFromName, usernameFromEmail, username].filter(
-      (value, index, all) => Boolean(value) && all.indexOf(value) === index,
-    );
-  }, [authSession?.user?.email, authSession?.user?.name, username]);
+  const userId = authSession?.user?.id ?? '';
 
-  const userId = authSession?.user?.id ?? username;
+  const refreshPreviewFromServer = useCallback(
+    async (targetPageId?: string) => {
+      try {
+        setPreviewLoading(true);
+        setPreviewError('');
+        const loaded = await loadPreviewPage(targetPageId || previewPageId || undefined, userId);
+        setPreviewPage(loaded.page);
+        setServerPreviewHeaderBlock(loaded.headerBlock);
+        setPreviewThemeTokens(loaded.themeTokens);
+      } catch (caughtError) {
+        setPreviewError(caughtError instanceof Error ? caughtError.message : 'Không thể tải preview');
+      } finally {
+        setPreviewLoading(false);
+      }
+    },
+    [previewPageId, userId],
+  );
 
   const showAssistantStep = useCallback(
     (items: Array<{ role: 'assistant' | 'user'; content: string }>, animate = true) => {
@@ -236,7 +237,7 @@ export default function AiChatOnboardingView({ mode = 'dashboard' }: { mode?: 'd
       try {
         setLoading(true);
         setError('');
-        const result = await startAiChat(userId, username);
+        const result = await startAiChat(userId, username, isOnboarding ? draftPageId || undefined : undefined);
         if (cancelled) {
           return;
         }
@@ -259,7 +260,7 @@ export default function AiChatOnboardingView({ mode = 'dashboard' }: { mode?: 'd
     return () => {
       cancelled = true;
     };
-  }, [showAssistantStep, userId, username]);
+  }, [draftPageId, isOnboarding, showAssistantStep, userId, username]);
 
   useEffect(() => {
     let cancelled = false;
@@ -268,13 +269,12 @@ export default function AiChatOnboardingView({ mode = 'dashboard' }: { mode?: 'd
       try {
         setPreviewLoading(true);
         setPreviewError('');
-        const loaded = await loadPreviewPage(previewPageId || undefined, accountUsernames);
+        const loaded = await loadPreviewPage(previewPageId || undefined, userId);
         if (cancelled) {
           return;
         }
         setPreviewPage(loaded.page);
-        setPreviewHeaderBlock(loaded.headerBlock);
-        setBasePreviewHeaderBlock(loaded.headerBlock);
+        setServerPreviewHeaderBlock(loaded.headerBlock);
         setPreviewThemeTokens(loaded.themeTokens);
       } catch (caughtError) {
         if (!cancelled) {
@@ -290,11 +290,62 @@ export default function AiChatOnboardingView({ mode = 'dashboard' }: { mode?: 'd
     return () => {
       cancelled = true;
     };
-  }, [accountUsernames, previewPageId]);
+  }, [previewPageId, userId]);
 
   const previewDisplayName = chatSession?.answers?.name;
   const previewBio = chatSession?.answers?.description || chatSession?.answers?.occupation;
   const previewAvatarOverride = previewAvatarUrl || chatSession?.answers?.social_avatar_url || '';
+
+  const sessionSocialHandles = useMemo(
+    () => socialHandlesFromAnswers(chatSession?.answers),
+    [chatSession?.answers],
+  );
+
+  const basePreviewHeaderBlock = useMemo(() => {
+    if (!serverPreviewHeaderBlock) {
+      return null;
+    }
+
+    return applySocialHandlesToHeaderBlock(serverPreviewHeaderBlock, sessionSocialHandles, {
+      displayMode: 'both',
+    });
+  }, [serverPreviewHeaderBlock, sessionSocialHandles]);
+
+  const activeStyleOption = useMemo(() => {
+    const activeId = hoveredStyleId || selectedStyleId;
+    if (!activeId) {
+      return null;
+    }
+    return styleOptions.find((option) => option.id === activeId) ?? null;
+  }, [hoveredStyleId, selectedStyleId, styleOptions]);
+
+  useEffect(() => {
+    if (!basePreviewHeaderBlock || activeStyleOption) {
+      return;
+    }
+
+    setPreviewHeaderBlock(basePreviewHeaderBlock);
+  }, [activeStyleOption, basePreviewHeaderBlock]);
+
+  useEffect(() => {
+    if (!basePreviewHeaderBlock || !activeStyleOption) {
+      return;
+    }
+
+    const merged = mergeStyleOptionPreview(basePreviewHeaderBlock, activeStyleOption, {
+      displayName: previewDisplayName,
+      bio: previewBio,
+      avatarUrl: previewAvatarOverride,
+    });
+    setPreviewHeaderBlock(merged.headerBlock);
+    setPreviewThemeTokens(merged.themeTokens);
+  }, [
+    activeStyleOption,
+    basePreviewHeaderBlock,
+    previewAvatarOverride,
+    previewBio,
+    previewDisplayName,
+  ]);
 
   const styledPreview = useMemo(
     () => ({
@@ -488,10 +539,20 @@ export default function AiChatOnboardingView({ mode = 'dashboard' }: { mode?: 'd
     try {
       const result = await generateAiChatLandingPage(chatSession.id);
       setChatSession(result.session);
+
+      if (result.awaitingStyleChoice && result.styleOptions?.length) {
+        setStyleOptions(result.styleOptions);
+        setAwaitingStyleChoice(true);
+        setSelectedStyleId(result.styleOptions[0]?.id ?? '');
+        showAssistantStep(result.newMessages, false);
+        return;
+      }
+
       showAssistantStep(result.newMessages, false);
 
       if (result.pageId) {
         setPageId(result.pageId);
+        await refreshPreviewFromServer(result.pageId);
       }
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : 'Không thể tạo landing page');
@@ -500,6 +561,37 @@ export default function AiChatOnboardingView({ mode = 'dashboard' }: { mode?: 'd
       setGenerating(false);
     }
   }
+
+  async function handleStyleSelect(styleOptionId: string) {
+    if (!chatSession || applyingStyle || !styleOptionId) {
+      return;
+    }
+
+    setSelectedStyleId(styleOptionId);
+    setApplyingStyle(true);
+    setError('');
+    setAwaitingStyleChoice(false);
+
+    try {
+      const result = await applyAiChatStyle(chatSession.id, styleOptionId);
+      setChatSession(result.session);
+      setStyleOptions([]);
+      setHoveredStyleId('');
+      showAssistantStep(result.newMessages, false);
+      if (result.pageId) {
+        setPageId(result.pageId);
+        await refreshPreviewFromServer(result.pageId);
+      }
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : 'Không thể áp dụng phong cách đã chọn');
+      setAwaitingStyleChoice(true);
+    } finally {
+      setApplyingStyle(false);
+    }
+  }
+
+  const showStylePicker =
+    awaitingStyleChoice && styleOptions.length > 0 && !generating && !loading && !applyingStyle;
 
   const showSuggestedDescription =
     !isOnboarding &&
@@ -528,6 +620,8 @@ export default function AiChatOnboardingView({ mode = 'dashboard' }: { mode?: 'd
     !submitting &&
     !socialSubmitting &&
     !backing &&
+    !awaitingStyleChoice &&
+    !applyingStyle &&
     (canGenerate || (chatSession?.currentStep ?? 0) > 0);
 
   const chatContent = (
@@ -578,6 +672,17 @@ export default function AiChatOnboardingView({ mode = 'dashboard' }: { mode?: 'd
                   onSubmit={(values) => void handleSocialSubmit(values)}
                 />
               ) : null}
+              {showStylePicker ? (
+                <AiStylePicker
+                  options={styleOptions}
+                  selectedId={selectedStyleId}
+                  hoveredId={hoveredStyleId}
+                  applying={applyingStyle}
+                  disabled={applyingStyle}
+                  onSelect={(optionId) => void handleStyleSelect(optionId)}
+                  onHover={(optionId) => setHoveredStyleId(optionId ?? '')}
+                />
+              ) : null}
             </div>
           </div>
 
@@ -621,18 +726,22 @@ export default function AiChatOnboardingView({ mode = 'dashboard' }: { mode?: 'd
                   <div className="ai-chat-input-placeholder muted-copy">
                     {stepTransitioning
                       ? 'Đang xử lý câu trả lời của bạn...'
+                      : showStylePicker
+                        ? 'Chọn 1 phong cách giao diện ở trên để hoàn tất trang.'
                       : inputType === 'socials'
                       ? 'Điền mạng xã hội trong form phía trên.'
                       : canGenerate
                         ? 'Sẵn sàng tạo trang — bấm nút bên phải.'
                         : generating
                           ? 'AI đang xử lý...'
+                          : applyingStyle
+                            ? 'Đang áp dụng phong cách...'
                           : 'Đang chờ AI...'}
                   </div>
                 )}
 
                 <div className="ai-chat-composer-actions">
-                  {canGenerate ? (
+                  {canGenerate && !showStylePicker ? (
                     <button
                       type="button"
                       className="btn btn-dark ai-chat-generate-btn"
@@ -692,7 +801,20 @@ export default function AiChatOnboardingView({ mode = 'dashboard' }: { mode?: 'd
               avatarOverride={previewAvatarOverride}
             />
           </aside>
-        ) : null}
+        ) : (
+          <aside className="ai-chat-phone-pane ai-chat-phone-pane-onboarding">
+            <DashboardPreviewPaneShell
+              page={previewPage}
+              headerBlock={styledPreview.headerBlock}
+              themeTokens={styledPreview.themeTokens}
+              loading={previewLoading}
+              error={previewError}
+              displayNameOverride={previewDisplayName}
+              bioOverride={previewBio}
+              avatarOverride={previewAvatarOverride}
+            />
+          </aside>
+        )}
       </div>
   );
 

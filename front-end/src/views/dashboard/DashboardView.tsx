@@ -11,7 +11,7 @@ import type { AddableBlockType } from '@/config/block-catalog';
 import { getBlockDisplayTitle, getBlockEditorPath } from '@/config/block-catalog';
 import type { PageBlock, LandingPage } from '@/models/page.model';
 import { loadSession } from '@/services/auth.service';
-import { getPageByUsername, updatePage } from '@/services/pages.service';
+import { getMyPage, updatePage } from '@/services/pages.service';
 import {
   createDefaultBlock,
   getBlockId,
@@ -22,13 +22,11 @@ import {
   toggleContentBlockVisibility,
   upsertContentBlock,
 } from '@/utils/page-blocks';
-import { getAccountUsernames } from '@/utils/onboarding';
 
 export default function DashboardView() {
   const { signOut } = useAuth();
   const navigate = useNavigate();
   const session = loadSession();
-  const accountUsernames = useMemo(() => getAccountUsernames(session), [session]);
   const [page, setPage] = useState<LandingPage | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -43,15 +41,8 @@ export default function DashboardView() {
     let cancelled = false;
     void (async () => {
       try {
-        let loadedPage: LandingPage | null = null;
-        for (const username of accountUsernames) {
-          const byUsername = await getPageByUsername(username);
-          if (byUsername && byUsername.status !== 'missing') {
-            loadedPage = byUsername;
-            break;
-          }
-        }
-        if (!loadedPage || loadedPage.status === 'missing') {
+        const loadedPage = await getMyPage();
+        if (!loadedPage?.id || loadedPage.status === 'missing') {
           if (!cancelled) {
             setPage(null);
           }
@@ -78,7 +69,7 @@ export default function DashboardView() {
     return () => {
       cancelled = true;
     };
-  }, [accountUsernames]);
+  }, [session?.user?.id]);
 
   const contentBlocks = useMemo(() => getContentBlocks(page?.blocks), [page?.blocks]);
 

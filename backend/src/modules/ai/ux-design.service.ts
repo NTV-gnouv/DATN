@@ -123,7 +123,12 @@ export class UxDesignService {
 
   generateStyleOptions(
     profile: BrandProfile,
-    options: { backgroundImageUrl?: string; pageKey: string; baseUx?: UxDesignProfile },
+    options: {
+      backgroundImageUrl?: string;
+      backgroundImageUrls?: string[];
+      pageKey: string;
+      baseUx?: UxDesignProfile;
+    },
   ): UxStyleOption[] {
     return buildStyleOptionsFromProfile(profile, options);
   }

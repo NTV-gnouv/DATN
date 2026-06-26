@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import type { HeaderBlock } from '@/models/editor.model';
 import { getDefaultHeaderBlock } from '@/services/editor.service';
 import { getPageEditorConfig } from '@/services/pages.service';
+import { normalizeHeaderBlock } from '@/utils/normalize-header-block';
 
 export function useDashboardPreviewData(pageId?: string) {
   const [headerBlock, setHeaderBlock] = useState<HeaderBlock | null>(null);
@@ -34,14 +35,14 @@ export function useDashboardPreviewData(pageId?: string) {
         const resolvedHeader = config?.headerBlock
           ? (config.headerBlock as HeaderBlock)
           : fallbackHeader;
-        setHeaderBlock(resolvedHeader);
+        setHeaderBlock(normalizeHeaderBlock(resolvedHeader));
         setThemeTokens((config?.themeTokens as Record<string, unknown> | null | undefined) ?? null);
       } catch (caughtError) {
         if (!cancelled) {
           setError(caughtError instanceof Error ? caughtError.message : 'Không thể tải preview');
           const fallbackHeader = await getDefaultHeaderBlock();
           if (!cancelled) {
-            setHeaderBlock(fallbackHeader);
+            setHeaderBlock(normalizeHeaderBlock(fallbackHeader));
             setThemeTokens(null);
           }
         }

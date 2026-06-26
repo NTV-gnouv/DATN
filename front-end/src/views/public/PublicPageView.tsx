@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 
 import { SiteShell } from '@/components/layout/SiteShell';
 import { ContentBlockRenderer } from '@/components/blocks/ContentBlockRenderer';
@@ -9,13 +9,14 @@ import { useThemePreviewMetrics } from '@/hooks/useThemePreviewMetrics';
 import { getPageBySlug, getPageEditorConfig } from '@/services/pages.service';
 import { listThemes } from '@/services/themes.service';
 import { trackPageView } from '@/services/page-analytics.service';
-import { submitContactForm, type ContactFormField } from '@/services/contact-forms.service';
+import { submitContactForm, getContactForm, type ContactFormField, type ContactFormRecord } from '@/services/contact-forms.service';
 import { clampSocialIconSize } from '@/utils/social-icon-size';
 import { isRenderablePreviewBlock } from '@/utils/page-blocks';
 import { getThemeEffectsConfig } from '@/utils/theme-effects';
 import { getBodyStyle, getHeadingStyle, getThemeTypographyCssVars, resolvePageTypography } from '@/utils/fonts';
 import { buildSocialBlockStyleFromHeader } from '@/utils/social-surface';
 import { buildContactFormPreviewStyles } from '@/utils/contact-form-surface';
+import { collectContactFormPayload, collectContactFormIdsFromPage, formatContactFormSubmitError, resolveContactFormId, resolvePublicContactFormDisplay } from '@/utils/contact-form-submit';
 import { getBlockShellStyle } from '@/utils/block-render-context';
 import { ProfileHeaderSection } from '@/components/profile/ProfileHeaderSection';
 import { resolveAvatarDisplayStyle } from '@/models/avatar-display.model';
@@ -113,10 +114,11 @@ export default function PublicPageView({ slug }: PublicPageViewProps) {
   const [page, setPage] = useState<LandingPage | null>(null);
   const [headerBlock, setHeaderBlock] = useState<HeaderBlock | null>(null);
   const [themeTokens, setThemeTokens] = useState<Record<string, unknown> | null>(null);
-  const [formValues, setFormValues] = useState<Record<string, Record<string, unknown>>>({});
   const [submittingFormId, setSubmittingFormId] = useState('');
   const [submitMessageByForm, setSubmitMessageByForm] = useState<Record<string, string>>({});
   const [submitErrorByForm, setSubmitErrorByForm] = useState<Record<string, string>>({});
+  const [contactFormsById, setContactFormsById] = useState<Record<string, ContactFormRecord>>({});
+  const [contactFormsLoaded, setContactFormsLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -157,6 +159,48 @@ export default function PublicPageView({ slug }: PublicPageViewProps) {
       }
     })();
   }, [slug]);
+
+  const contactFormIds = useMemo(() => collectContactFormIdsFromPage(page), [page]);
+
+  useEffect(() => {
+    if (contactFormIds.length === 0) {
+      setContactFormsById({});
+      setContactFormsLoaded(true);
+      return;
+    }
+
+    let cancelled = false;
+    setContactFormsLoaded(false);
+    void (async () => {
+      const entries = await Promise.all(
+        contactFormIds.map(async (formId) => {
+          try {
+            const form = await getContactForm(formId);
+            return [formId, form] as const;
+          } catch {
+            return null;
+          }
+        }),
+      );
+
+      if (cancelled) {
+        return;
+      }
+
+      const next: Record<string, ContactFormRecord> = {};
+      for (const entry of entries) {
+        if (entry) {
+          next[entry[0]] = entry[1];
+        }
+      }
+      setContactFormsById(next);
+      setContactFormsLoaded(true);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [contactFormIds]);
 
   useEffect(() => {
     if (!page?.id || !slug || isLoading || error) {
@@ -261,50 +305,38 @@ export default function PublicPageView({ slug }: PublicPageViewProps) {
   const previewBackgroundStyle = buildPageBackgroundStyle(pageBackground);
   const reviewFontSize = previewMetrics.reviewFontSize;
 
-  function updateFormValue(formId: string, fieldId: string, value: unknown) {
-    setFormValues((current) => ({
-      ...current,
-      [formId]: {
-        ...(current[formId] ?? {}),
-        [fieldId]: value,
-      },
-    }));
-  }
-
-  async function handleSubmitContactForm(formBlock: ContactFormPageBlockLocal) {
-    if (!formBlock.formId) {
+  async function handleSubmitContactForm(
+    formBlock: ContactFormPageBlockLocal,
+    fields: ContactFormField[],
+    event: FormEvent<HTMLFormElement>,
+    resolvedFormId: string,
+  ) {
+    if (!resolvedFormId) {
       return;
     }
-    setSubmittingFormId(formBlock.formId);
-    setSubmitErrorByForm((current) => ({ ...current, [formBlock.formId]: '' }));
-    setSubmitMessageByForm((current) => ({ ...current, [formBlock.formId]: '' }));
+
+    const formElement = event.currentTarget;
+    const payload = collectContactFormPayload(formElement, fields);
+
+    setSubmittingFormId(resolvedFormId);
+    setSubmitErrorByForm((current) => ({ ...current, [resolvedFormId]: '' }));
+    setSubmitMessageByForm((current) => ({ ...current, [resolvedFormId]: '' }));
     try {
-      const payload = formValues[formBlock.formId] ?? {};
-      const response = await submitContactForm(formBlock.formId, payload, window.location.href);
+      const response = await submitContactForm(resolvedFormId, payload, window.location.href);
+      const apiSuccessMessage = contactFormsById[resolvedFormId]?.successMessage?.trim();
       setSubmitMessageByForm((current) => ({
         ...current,
-        [formBlock.formId]: formBlock.successMessage || response.message || 'Đã gửi thành công.',
+        [resolvedFormId]: apiSuccessMessage || formBlock.successMessage || response.message || 'Đã gửi thành công.',
       }));
-      setFormValues((current) => ({ ...current, [formBlock.formId]: {} }));
+      formElement.reset();
     } catch (caughtError) {
       setSubmitErrorByForm((current) => ({
         ...current,
-        [formBlock.formId]: caughtError instanceof Error ? caughtError.message : 'Không thể gửi form.',
+        [resolvedFormId]: formatContactFormSubmitError(caughtError, fields),
       }));
     } finally {
       setSubmittingFormId('');
     }
-  }
-
-  function getFieldValue(formId: string, field: ContactFormField): unknown {
-    const submittedValue = formValues[formId]?.[field.id];
-    if (submittedValue != null) {
-      return submittedValue;
-    }
-    if (field.type === 'checkbox') {
-      return [];
-    }
-    return field.defaultValue ?? '';
   }
 
   return (
@@ -314,18 +346,20 @@ export default function PublicPageView({ slug }: PublicPageViewProps) {
         className="site-shell--public"
         hideHero
       >
-      <div className="public-landing-page" style={previewBackgroundStyle}>
+      <div className="public-landing-page">
+        <div className="public-page-background" style={previewBackgroundStyle} aria-hidden="true" />
         {themeEffects?.css ? <style>{themeEffects.css}</style> : null}
-        <div
-          className={`public-preview-screen mobile-theme-canvas${themeEffects?.className ? ` ${themeEffects.className}` : ''}`}
-          style={{
-            color: headerColor,
-            fontFamily: pageTypography.bodyFontStack,
-            lineHeight: pageTypography.lineHeight,
-            ...getThemeTypographyCssVars(pageTypography),
-            ...previewMetrics.cssVars,
-          }}
-        >
+        <div className="public-preview-screen">
+          <div
+            className={`public-preview-canvas mobile-theme-canvas${themeEffects?.className ? ` ${themeEffects.className}` : ''}`}
+            style={{
+              color: headerColor,
+              fontFamily: pageTypography.bodyFontStack,
+              lineHeight: pageTypography.lineHeight,
+              ...getThemeTypographyCssVars(pageTypography),
+              ...previewMetrics.cssVars,
+            }}
+          >
           <ProfileHeaderSection
             avatarUrl={avatarUrl}
             avatarDisplayStyle={avatarDisplayStyle}
@@ -363,7 +397,16 @@ export default function PublicPageView({ slug }: PublicPageViewProps) {
             if (String(typedBlock.type ?? '') === 'contact-form') {
               const formBlock = typedBlock as unknown as ContactFormPageBlockLocal;
               const formConfig = getContactFormBlockConfig(typedBlock);
-              const formId = formBlock.formId || `contact-form-${index}`;
+              const resolvedFormId = resolveContactFormId(formBlock, index);
+              const apiForm = contactFormsById[resolvedFormId];
+              if (resolvedFormId && contactFormIds.includes(resolvedFormId) && !contactFormsLoaded) {
+                return (
+                  <div key={`${resolvedFormId}-${index}-loading`} className="landing-contact-form public-contact-form phone-content-card">
+                    <p className="muted-copy">Đang tải biểu mẫu...</p>
+                  </div>
+                );
+              }
+              const displayForm = resolvePublicContactFormDisplay(formBlock, formConfig, apiForm);
               const formStyles = buildContactFormPreviewStyles({
                 divWidth,
                 contentBg,
@@ -377,25 +420,23 @@ export default function PublicPageView({ slug }: PublicPageViewProps) {
               });
               return (
                 <ContactFormBlockPreview
-                  key={`${formId}-${index}`}
+                  key={`${resolvedFormId}-${index}-${displayForm.fields.map((field) => field.id).join('-')}`}
                   className="landing-contact-form public-contact-form"
-                  formKey={formId}
-                  title={formConfig.title}
-                  submitLabel={formConfig.submitLabel}
-                  fields={formConfig.fields}
-                  showFieldLabels={formConfig.showFieldLabels}
+                  nativeForm
+                  title={displayForm.title}
+                  submitLabel={displayForm.submitLabel}
+                  fields={displayForm.fields}
+                  showFieldLabels={displayForm.showFieldLabels}
                   buttonColor={buttonColor}
                   contentText={contentText}
                   titleStyle={formStyles.titleStyle}
                   surfaceStyle={formStyles.surfaceStyle}
-                  submitting={submittingFormId === formId}
-                  errorMessage={submitErrorByForm[formId]}
-                  successMessage={submitMessageByForm[formId]}
-                  renderFieldValue={(field) => getFieldValue(formId, field)}
-                  onFieldChange={(field, value) => updateFormValue(formId, field.id, value)}
+                  submitting={submittingFormId === resolvedFormId}
+                  errorMessage={submitErrorByForm[resolvedFormId]}
+                  successMessage={submitMessageByForm[resolvedFormId]}
                   onSubmit={(event) => {
                     event.preventDefault();
-                    void handleSubmitContactForm(formBlock);
+                    void handleSubmitContactForm(formBlock, displayForm.fields, event, resolvedFormId);
                   }}
                 />
               );
@@ -465,6 +506,7 @@ export default function PublicPageView({ slug }: PublicPageViewProps) {
               </div>
             );
           })}
+          </div>
         </div>
       </div>
 

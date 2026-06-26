@@ -4,6 +4,7 @@ import { RowDataPacket } from 'mysql2/promise';
 import { DatabaseService } from '@/core/database/database.service';
 
 import type { PageViewEvent } from './page-views.types';
+import { normalizeSqlDailyBucket, normalizeSqlHourlyBucket } from './page-views.utils';
 
 type PageViewRow = RowDataPacket & {
   id: string;
@@ -33,6 +34,11 @@ export class PageViewsRepository {
     };
   }
 
+  private toMysqlDateTime(value: string): Date {
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
+  }
+
   async save(event: PageViewEvent): Promise<PageViewEvent> {
     await this.databaseService.execute(
       `INSERT INTO page_view_events (id, page_id, slug, viewed_at, country_code, device, user_agent, referrer)
@@ -49,7 +55,7 @@ export class PageViewsRepository {
         event.id,
         event.pageId,
         event.slug,
-        event.viewedAt,
+        this.toMysqlDateTime(event.viewedAt),
         event.countryCode,
         event.device,
         event.userAgent,
@@ -124,7 +130,7 @@ export class PageViewsRepository {
     );
 
     return rows.map((row) => ({
-      date: String(row.bucket),
+      date: normalizeSqlDailyBucket(row.bucket),
       views: Number(row.views ?? 0),
     }));
   }
@@ -140,7 +146,7 @@ export class PageViewsRepository {
     );
 
     return rows.map((row) => ({
-      date: String(row.bucket),
+      date: normalizeSqlHourlyBucket(row.bucket),
       views: Number(row.views ?? 0),
     }));
   }

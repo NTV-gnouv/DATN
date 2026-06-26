@@ -14,11 +14,10 @@ import { loadSession } from '@/services/auth.service';
 import {
   checkSlugAvailability,
   getPageById,
-  getPageByUsername,
+  getMyPage,
   getPageEditorConfig,
   updatePageEditorConfig,
   updatePageSlug,
-  updatePageSlugByUsername,
 } from '@/services/pages.service';
 import { FontPairingPicker } from '@/components/editor/FontPairingPicker';
 import { AvatarDisplayStylePicker } from '@/components/editor/AvatarDisplayStylePicker';
@@ -172,11 +171,7 @@ export default function PageEditorView({ pageId: pageIdProp }: PageEditorViewPro
   const pageId = pageIdProp ?? params.pageId ?? 'p-demo';
   const { signOut } = useAuth();
   const session = loadSession();
-  const accountUsernames = useMemo(() => {
-    const usernameFromName = normalizeSlug(session?.user?.name || '');
-    const usernameFromEmail = normalizeSlug(session?.user?.email?.split('@')[0] || '');
-    return [usernameFromName, usernameFromEmail].filter((value, index, all) => Boolean(value) && all.indexOf(value) === index);
-  }, [session?.user?.email, session?.user?.name]);
+  const userId = session?.user?.id ?? '';
 
   const [page, setPage] = useState<LandingPage | null>(null);
   const [themeId, setThemeId] = useState('minimal');
@@ -248,16 +243,21 @@ export default function PageEditorView({ pageId: pageIdProp }: PageEditorViewPro
       try {
         let loadedPage: LandingPage | null = null;
 
-        for (const username of accountUsernames) {
-          const byUsername = await getPageByUsername(username);
-          if (byUsername && byUsername.status !== 'missing') {
-            loadedPage = byUsername;
-            break;
-          }
+        try {
+          loadedPage = await getPageById(pageId);
+        } catch {
+          loadedPage = null;
         }
 
-        if (!loadedPage) {
-          loadedPage = await getPageById(pageId);
+        if (!loadedPage?.id || loadedPage.status === 'missing') {
+          loadedPage = await getMyPage();
+        }
+
+        if (!loadedPage?.id || loadedPage.status === 'missing') {
+          if (!cancelled) {
+            setEditorError('Không tìm thấy trang của bạn.');
+          }
+          return;
         }
 
         const effectivePageId = loadedPage.id ?? pageId;
@@ -312,7 +312,7 @@ export default function PageEditorView({ pageId: pageIdProp }: PageEditorViewPro
     return () => {
       cancelled = true;
     };
-  }, [accountUsernames, pageId]);
+  }, [pageId, userId]);
 
   function updateHeaderBlock(updater: (current: HeaderBlock) => HeaderBlock) {
     setHeaderBlock((current) => {
@@ -358,7 +358,6 @@ export default function PageEditorView({ pageId: pageIdProp }: PageEditorViewPro
       headerBlockId,
       headerBlock,
       pageId: page?.id ?? pageId,
-      username: page?.username ?? accountUsernames[0] ?? '',
     });
 
     if (!lastAutoSaveSnapshotRef.current) {
@@ -389,12 +388,10 @@ export default function PageEditorView({ pageId: pageIdProp }: PageEditorViewPro
             return;
           }
 
-          const targetUsername = page?.username ?? accountUsernames[0];
-          const updatedPage = targetUsername
-            ? await updatePageSlugByUsername(targetUsername, normalizedSlug)
-            : await updatePageSlug(page?.id ?? pageId, normalizedSlug);
+          const targetPageId = page?.id ?? pageId;
+          const updatedPage = await updatePageSlug(targetPageId, normalizedSlug);
 
-          await updatePageEditorConfig(updatedPage.id ?? page?.id ?? pageId, {
+          await updatePageEditorConfig(updatedPage.id ?? targetPageId, {
             themeId,
             themeTokens,
             headerBlockId,
@@ -410,8 +407,7 @@ export default function PageEditorView({ pageId: pageIdProp }: PageEditorViewPro
               themeTokens,
               headerBlockId,
               headerBlock,
-            pageId: updatedPage.id ?? page?.id ?? pageId,
-            username: targetUsername ?? '',
+            pageId: updatedPage.id ?? targetPageId,
           });
         } catch (caughtError) {
           const message = caughtError instanceof Error ? caughtError.message : 'Không thể tự động lưu cấu hình';
@@ -425,7 +421,7 @@ export default function PageEditorView({ pageId: pageIdProp }: PageEditorViewPro
         window.clearTimeout(autoSaveTimerRef.current);
       }
     };
-  }, [accountUsernames, headerBlock, headerBlockId, loadingEditor, page?.id, page?.username, pageId, slug, themeId, themeTokens]);
+  }, [headerBlock, headerBlockId, loadingEditor, page?.id, pageId, slug, themeId, themeTokens]);
 
   const previewTitle = headerBlock && hasText(headerBlock.fields?.profile?.displayName)
     ? headerBlock.fields.profile.displayName

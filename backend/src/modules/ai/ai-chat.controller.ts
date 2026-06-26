@@ -16,6 +16,10 @@ export class StartAiChatDto {
   @IsString()
   @IsOptional()
   username?: string;
+
+  @IsString()
+  @IsOptional()
+  pageId?: string;
 }
 
 export class SendAiChatMessageDto {
@@ -34,7 +38,11 @@ export class AiChatController {
   @Public()
   @ApiOperation({ summary: 'Start AI chat onboarding session' })
   start(@Body() body: StartAiChatDto) {
-    return this.aiChatService.startChat(body.userId, body.username?.trim() || body.userId);
+    return this.aiChatService.startChat(
+      body.userId,
+      body.username?.trim() || body.userId,
+      body.pageId?.trim() || undefined,
+    );
   }
 
   @Get(':sessionId')

@@ -147,4 +147,48 @@ export class UnsplashService {
       galleryUrls: [uploaded[2] || fallback, uploaded[3] || fallback],
     };
   }
+
+  async fetchBackgroundVariants(
+    keywords: string[],
+    ownerId: string,
+    count = 3,
+  ): Promise<string[]> {
+    const baseKeywords = keywords.map((item) => String(item ?? '').trim()).filter(Boolean);
+    const fallbackQuery = baseKeywords[0] || 'creative lifestyle';
+    const queries = Array.from({ length: count }, (_, index) => {
+      const keyword = baseKeywords[index] ?? baseKeywords[baseKeywords.length - 1] ?? fallbackQuery;
+      return index === 0 ? keyword : `${keyword} background ${index + 1}`;
+    });
+
+    const urls: string[] = [];
+    const seen = new Set<string>();
+
+    for (let index = 0; index < queries.length; index += 1) {
+      const found = await this.searchPhoto(queries[index]);
+      if (!found) {
+        continue;
+      }
+
+      try {
+        const publicUrl = await this.uploadFromUrl(
+          found.sourceUrl,
+          ownerId,
+          'background',
+          `unsplash-style-bg-${index + 1}`,
+        );
+        if (publicUrl && !seen.has(publicUrl)) {
+          seen.add(publicUrl);
+          urls.push(publicUrl);
+        }
+      } catch (error) {
+        this.logger.warn(`Failed to upload background variant for "${queries[index]}": ${String(error)}`);
+        if (found.sourceUrl && !seen.has(found.sourceUrl)) {
+          seen.add(found.sourceUrl);
+          urls.push(found.sourceUrl);
+        }
+      }
+    }
+
+    return urls;
+  }
 }

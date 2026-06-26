@@ -29,7 +29,7 @@ export function AiStylePicker({
   return (
     <div className="ai-style-picker" role="listbox" aria-label="Chọn kiểu giao diện">
       <p className="ai-style-picker-title">
-        Chọn 1 trong {options.length} phong cách — cuộn để xem thêm
+        Chọn 1 trong {options.length} phong cách — mỗi phương án có nền khác nhau
       </p>
       <div className="ai-style-picker-grid">
         {options.map((option) => {

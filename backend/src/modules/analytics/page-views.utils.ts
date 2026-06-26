@@ -236,6 +236,44 @@ export function formatHourKey(date: Date): string {
   return `${year}-${month}-${day}T${hour}`;
 }
 
+export function normalizeSqlDailyBucket(value: unknown): string {
+  if (value instanceof Date) {
+    return formatDateKey(value);
+  }
+
+  const raw = String(value ?? '').trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    return raw;
+  }
+
+  const datePart = raw.split(/[ T]/)[0] ?? '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
+    return datePart;
+  }
+
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? raw : formatDateKey(parsed);
+}
+
+export function normalizeSqlHourlyBucket(value: unknown): string {
+  if (value instanceof Date) {
+    return formatHourKey(floorToHour(value));
+  }
+
+  const raw = String(value ?? '').trim();
+  const match = raw.match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2})/);
+  if (match) {
+    return `${match[1]}T${match[2]}`;
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}$/.test(raw)) {
+    return raw;
+  }
+
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? raw : formatHourKey(floorToHour(parsed));
+}
+
 export function floorToHour(date: Date): Date {
   const next = new Date(date);
   next.setMinutes(0, 0, 0);

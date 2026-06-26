@@ -24,6 +24,7 @@ export type UxStyleOption = {
   label: string;
   description: string;
   uxDesign: UxDesignProfile;
+  backgroundImageUrl?: string;
   preview: {
     themeTokens: Record<string, unknown>;
     headerPatch: Record<string, unknown>;
@@ -232,6 +233,43 @@ function scorePresetForBrand(preset: UxStylePresetDefinition, input: UxDesignInp
   }
 
   return score;
+}
+
+export function selectDiverseStylePresetsForProfile(
+  input: UxDesignInput,
+  limit = 3,
+): UxStylePresetDefinition[] {
+  const ranked = UX_STYLE_PRESETS.map((preset) => ({
+    preset,
+    score: scorePresetForBrand(preset, input),
+  })).sort((a, b) => b.score - a.score);
+
+  const byBackgroundStyle = {
+    image: ranked.filter((item) => item.preset.overrides.background_style === 'image'),
+    gradient: ranked.filter((item) => item.preset.overrides.background_style === 'gradient'),
+    solid: ranked.filter((item) => item.preset.overrides.background_style === 'solid'),
+  };
+
+  const selected: UxStylePresetDefinition[] = [];
+  const addPreset = (preset?: UxStylePresetDefinition) => {
+    if (!preset || selected.some((item) => item.id === preset.id)) {
+      return;
+    }
+    selected.push(preset);
+  };
+
+  addPreset(byBackgroundStyle.image[0]?.preset);
+  addPreset(byBackgroundStyle.gradient[0]?.preset);
+  addPreset(byBackgroundStyle.solid[0]?.preset);
+
+  for (const item of ranked) {
+    if (selected.length >= limit) {
+      break;
+    }
+    addPreset(item.preset);
+  }
+
+  return selected.slice(0, limit);
 }
 
 export function selectStylePresetsForProfile(

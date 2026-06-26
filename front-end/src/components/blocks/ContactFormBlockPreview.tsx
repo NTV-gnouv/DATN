@@ -16,6 +16,7 @@ export type ContactFormBlockPreviewProps = {
   onSubmit?: (event: FormEvent<HTMLFormElement>) => void;
   renderFieldValue?: (field: ContactFormField) => unknown;
   onFieldChange?: (field: ContactFormField, value: unknown) => void;
+  nativeForm?: boolean;
   submitting?: boolean;
   errorMessage?: string;
   successMessage?: string;
@@ -36,20 +37,26 @@ function renderFieldControl(
   options: {
     value?: unknown;
     onChange?: (value: unknown) => void;
-    fieldName?: string;
+    nativeForm?: boolean;
   },
 ) {
   const placeholder = field.placeholder || '';
-  const controlled = options.onChange != null;
+  const controlled = !options.nativeForm && options.onChange != null;
   const value = options.value;
+  const autoComplete =
+    field.type === 'email' ? 'email' : field.type === 'name' ? 'name' : field.type === 'number' && field.numberMode === 'phone' ? 'tel' : undefined;
 
   if (field.type === 'textarea') {
     return (
       <textarea
         className="input landing-contact-form-control"
+        name={field.id}
+        data-contact-field={field.id}
         rows={3}
         placeholder={placeholder}
         maxLength={field.maxLength || undefined}
+        required={field.required || undefined}
+        autoComplete={autoComplete}
         value={controlled ? String(value ?? '') : undefined}
         defaultValue={controlled ? undefined : String(field.defaultValue ?? '')}
         onChange={controlled ? (event) => options.onChange?.(event.target.value) : undefined}
@@ -65,6 +72,9 @@ function renderFieldControl(
     return (
       <select
         className="input landing-contact-form-control"
+        name={field.id}
+        data-contact-field={field.id}
+        required={field.required || undefined}
         value={controlled ? String(value ?? '') : undefined}
         defaultValue={controlled ? undefined : String(field.defaultValue ?? '')}
         onChange={controlled ? (event) => options.onChange?.(event.target.value) : undefined}
@@ -97,8 +107,10 @@ function renderFieldControl(
           <label key={option} className="landing-contact-form-choice">
             <input
               type={field.type}
-              name={options.fieldName ?? field.id}
+              name={field.id}
+              data-contact-field={field.id}
               value={option}
+              required={field.required || undefined}
               checked={selected.includes(option)}
               onChange={(event) => {
                 if (!controlled) {
@@ -126,8 +138,11 @@ function renderFieldControl(
       <input
         className="input landing-contact-form-control"
         type="file"
+        name={field.id}
+        data-contact-field={field.id}
         accept={field.accept || undefined}
         multiple={field.multiple}
+        required={field.required || undefined}
         onChange={
           controlled
             ? (event) => {
@@ -148,8 +163,12 @@ function renderFieldControl(
     <input
       className="input landing-contact-form-control"
       type={getInputType(field)}
+      name={field.id}
+      data-contact-field={field.id}
       placeholder={placeholder}
       maxLength={field.maxLength || undefined}
+      required={field.required || undefined}
+      autoComplete={autoComplete}
       value={controlled ? String(value ?? '') : undefined}
       defaultValue={controlled ? undefined : String(field.defaultValue ?? '')}
       onChange={controlled ? (event) => options.onChange?.(event.target.value) : undefined}
@@ -170,6 +189,7 @@ export function ContactFormBlockPreview({
   onSubmit,
   renderFieldValue,
   onFieldChange,
+  nativeForm = false,
   submitting = false,
   errorMessage,
   successMessage,
@@ -197,9 +217,9 @@ export function ContactFormBlockPreview({
 
         const labelText = String(field.label ?? '').trim();
         const control = renderFieldControl(field, {
-          value: renderFieldValue?.(field),
-          onChange: onFieldChange ? (value) => onFieldChange(field, value) : undefined,
-          fieldName: formKey ? `${formKey}-${field.id}` : field.id,
+          value: nativeForm ? undefined : renderFieldValue?.(field),
+          onChange: nativeForm ? undefined : onFieldChange ? (value) => onFieldChange(field, value) : undefined,
+          nativeForm,
         });
 
         if (!control) {

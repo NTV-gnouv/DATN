@@ -1,14 +1,18 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 
 import { MediaService } from '@/modules/media/media.service';
+import { PagesService } from '@/modules/pages/pages.service';
 import { SocialProfilesService } from '@/modules/social-profiles/social-profiles.service';
 import type { SocialProfileLookupResult, SupportedSocialPlatform } from '@/modules/social-profiles/social-profiles.types';
 
 import { BrandProfileService } from './brand-profile.service';
-import { AiChatMessage, AiChatRepository, AiChatSessionRecord } from './ai-chat.repository';
+import { AiChatMessage, AiChatRepository, AiChatSessionRecord, type AiChatStyleOption } from './ai-chat.repository';
 import { LandingBuilderService } from './landing-builder.service';
 import { UxDesignService } from './ux-design.service';
 import { normalizeDescription, normalizeOccupation, normalizePersonName } from './utils/normalize-chat-input';
+import type { UxDesignProfile } from '@/shared/types/ux-design.types';
+import { selectDiverseStylePresetsForProfile } from '@/shared/style-presets/ux-style-presets';
+import { buildStyleOptionsForPresets } from './ux-style-options.builder';
 
 type ChatStep = {
   key: string;
@@ -189,6 +193,7 @@ export class AiChatService {
     private readonly uxDesignService: UxDesignService,
     private readonly mediaService: MediaService,
     private readonly socialProfilesService: SocialProfilesService,
+    private readonly pagesService: PagesService,
   ) {}
 
   getCurrentInputType(currentStep: number): 'text' | 'socials' | 'none' {
@@ -207,9 +212,19 @@ export class AiChatService {
     };
   }
 
-  async startChat(userId: string, username: string) {
+  async startChat(userId: string, username: string, pageId?: string) {
+    let linkedPageId: string | undefined;
+    if (pageId?.trim()) {
+      try {
+        const ownedPage = await this.pagesService.getOwned(pageId.trim(), userId);
+        linkedPageId = String(ownedPage.id);
+      } catch {
+        linkedPageId = undefined;
+      }
+    }
+
     const firstMessages = CHAT_STEPS[0].getMessages({});
-    const session = await this.aiChatRepository.create(userId, username, firstMessages);
+    const session = await this.aiChatRepository.create(userId, username, firstMessages, linkedPageId);
 
     return {
       ...this.buildSessionPayload(session),
@@ -224,8 +239,8 @@ export class AiChatService {
     return {
       ...this.buildSessionPayload(session),
       canGenerate: session.status === 'ready',
-      styleOptions: session.styleOptions ?? [],
-      awaitingStyleChoice: false,
+      styleOptions: (session.styleOptions ?? []).map(({ uxDesign: _uxDesign, ...option }) => option),
+      awaitingStyleChoice: session.status === 'choosing_style',
     };
   }
 
@@ -248,9 +263,11 @@ export class AiChatService {
     if (session.status === 'choosing_style') {
       return {
         ...this.buildSessionPayload(session),
-        newMessages: [this.toAssistantMessage('Mình đang hoàn thiện landing page. Vui lòng đợi trong giây lát...')],
+        newMessages: [this.toAssistantMessage('Hãy chọn 1 trong 3 phong cách giao diện bên dưới nhé.')],
         awaitingInput: false,
-        canGenerate: true,
+        canGenerate: false,
+        styleOptions: (session.styleOptions ?? []).map(({ uxDesign: _uxDesign, ...option }) => option),
+        awaitingStyleChoice: true,
       };
     }
 
@@ -506,11 +523,13 @@ export class AiChatService {
     let session = await this.requireSession(sessionId);
 
     if (session.status === 'choosing_style') {
-      const profile = session.profile as unknown as import('@/shared/types/brand-profile.types').BrandProfile | undefined;
-      const baseUx = session.baseUx as unknown as import('@/shared/types/ux-design.types').UxDesignProfile | undefined;
-      if (profile?.name && baseUx) {
-        return this.completeLandingBuild(session, profile, baseUx);
-      }
+      const styleOptions = (session.styleOptions ?? []).map(({ uxDesign: _uxDesign, ...option }) => option);
+      return {
+        session,
+        styleOptions,
+        awaitingStyleChoice: true,
+        newMessages: [this.toAssistantMessage('Hãy chọn 1 trong 3 phong cách giao diện bên dưới nhé.')],
+      };
     }
 
     if (session.status !== 'ready' && session.status !== 'collecting') {
@@ -552,7 +571,53 @@ export class AiChatService {
     session = await this.appendMessage(session, 'assistant', 'Đang hoàn thiện landing page theo phong cách AI đã thiết kế...');
     session = await this.aiChatRepository.save(session);
 
-    return this.completeLandingBuild(session, profile, baseUx, images);
+    const profileInput = {
+      name: profile.name,
+      occupation: profile.occupation,
+      description: profile.long_bio || profile.short_bio,
+      brand_style: profile.brand_style,
+      personality_traits: profile.personality_traits,
+      color_palette: profile.color_palette,
+    };
+    const presets = selectDiverseStylePresetsForProfile(profileInput);
+    const imagePresetCount = presets.filter((preset) => preset.overrides.background_style === 'image').length;
+    const backgroundVariants = await this.landingBuilderService.resolveStyleBackgroundUrls(
+      profile,
+      session.userId,
+      Math.max(imagePresetCount, 2),
+    );
+
+    const builtOptions = buildStyleOptionsForPresets(profile, presets, {
+      backgroundImageUrl: images.backgroundUrl,
+      backgroundImageUrls: backgroundVariants.length > 0 ? backgroundVariants : [images.backgroundUrl],
+      pageKey: session.id,
+      baseUx,
+    });
+
+    const styleOptions: AiChatStyleOption[] = builtOptions.map((option) => ({
+      id: option.id,
+      label: option.label,
+      description: option.description,
+      uxDesign: option.uxDesign as unknown as Record<string, unknown>,
+      backgroundImageUrl: option.backgroundImageUrl,
+      preview: option.preview,
+    }));
+
+    session.styleOptions = styleOptions;
+    session.status = 'choosing_style';
+    const styleMessages = [
+      'Mình đã chuẩn bị 3 phương án giao diện khác nhau cho bạn.',
+      'Mỗi phương án có nền và phong cách riêng — hãy chọn 1 phương án bạn thích nhất nhé ✨',
+    ];
+    session = await this.appendMessages(session, styleMessages);
+    session = await this.aiChatRepository.save(session);
+
+    return {
+      session,
+      styleOptions: styleOptions.map(({ uxDesign: _uxDesign, ...clientOption }) => clientOption),
+      awaitingStyleChoice: true,
+      newMessages: styleMessages.map((content) => this.toAssistantMessage(content)),
+    };
   }
 
   async applyStyleChoice(sessionId: string, styleOptionId: string) {
@@ -567,12 +632,26 @@ export class AiChatService {
       throw new BadRequestException('Không tìm thấy thiết kế giao diện AI để tạo trang.');
     }
 
+    const selectedOption = (session.styleOptions ?? []).find((option) => option.id === styleOptionId);
+    if (!selectedOption) {
+      throw new BadRequestException('Phương án giao diện không hợp lệ.');
+    }
+
+    const selectedUx =
+      (selectedOption.uxDesign as unknown as UxDesignProfile | undefined) ?? baseUx;
+
     session.status = 'generating';
     session.selectedStyleId = styleOptionId;
-    session = await this.appendMessage(session, 'assistant', 'Đang hoàn thiện landing page...');
+    session = await this.appendMessage(session, 'assistant', `Đang hoàn thiện landing page theo phong cách "${selectedOption.label}"...`);
     session = await this.aiChatRepository.save(session);
 
-    return this.completeLandingBuild(session, profile, baseUx);
+    const socialHandles = buildSocialHandles(session.answers);
+    const images = await this.landingBuilderService.resolveBrandImages(profile, session.userId, socialHandles);
+    if (selectedOption.backgroundImageUrl) {
+      images.backgroundUrl = selectedOption.backgroundImageUrl;
+    }
+
+    return this.completeLandingBuild(session, profile, selectedUx, images);
   }
 
   private async completeLandingBuild(
@@ -583,9 +662,12 @@ export class AiChatService {
   ) {
     const built = await this.landingBuilderService.buildFromProfile(profile, session.userId, session.username, {
       ownerId: session.userId,
+      pageId: session.pageId,
       avatarUrl: session.answers.social_avatar_url || undefined,
       socialHandles: buildSocialHandles(session.answers),
+      socialDisplayMode: 'both',
       uxDesign,
+      images,
     });
 
     let nextSession = session;

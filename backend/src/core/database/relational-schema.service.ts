@@ -543,7 +543,7 @@ export class RelationalSchemaService {
           id,
           pageId,
           String(event.slug ?? ''),
-          event.viewedAt ? String(event.viewedAt) : null,
+          event.viewedAt ? new Date(String(event.viewedAt)) : null,
           String(event.countryCode ?? ''),
           String(event.device ?? 'unknown'),
           event.userAgent ? String(event.userAgent) : null,

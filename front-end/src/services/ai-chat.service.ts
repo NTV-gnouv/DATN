@@ -95,10 +95,14 @@ export type AiChatApplyStyleResult = {
   newMessages: AiChatMessage[];
 };
 
-export function startAiChat(userId: string, username?: string) {
+export function startAiChat(userId: string, username?: string, pageId?: string) {
   return apiRequest<AiChatStartResult>('/ai/chat/start', {
     method: 'POST',
-    body: JSON.stringify({ userId, username }),
+    body: JSON.stringify({
+      userId,
+      username,
+      ...(pageId ? { pageId } : {}),
+    }),
   });
 }
 

@@ -504,12 +504,15 @@ a {
   }
 
   .phone-preview-screen {
+    --phone-viewport-height: min(640px, calc(100dvh - 140px));
     width: min(320px, 100%);
-    height: min(640px, calc(100dvh - 120px));
-    min-height: 0;
-    max-height: min(640px, calc(100dvh - 120px));
+    height: var(--phone-viewport-height);
+    max-height: var(--phone-viewport-height);
     border-radius: 18px;
-    padding: 18px 12px 18px;
+  }
+
+  .phone-preview-canvas {
+    padding: 18px 12px;
     gap: 14px;
   }
 
@@ -589,6 +592,8 @@ a {
 }
 
 .site-shell.site-shell--public {
+  height: auto;
+  min-height: 100dvh;
   padding: 0 !important;
   background: transparent !important;
 }
@@ -598,10 +603,8 @@ a {
 }
 
 @media (max-width: 520px) {
-  .public-landing-page .public-preview-screen {
-    width: 100%;
-    min-height: auto;
-    padding: max(14px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) max(20px, env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px)) !important;
+  .public-landing-page .public-preview-canvas {
+    padding: max(14px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) max(20px, env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px));
   }
 }
 
@@ -1451,6 +1454,7 @@ a {
   width: 100%;
   min-width: 520px;
   height: auto;
+  min-height: 176px;
   display: block;
 }
 

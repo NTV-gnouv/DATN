@@ -1,9 +1,11 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 
 import { DatabaseService } from '@/core/database/database.service';
 import { resolveBlockReferences } from '@/core/database/block-reference.util';
 import { normalizeJsonPayload, toJsonColumn } from '@/core/database/json-payload.util';
+
+import { isPageOwnedBy } from './page-ownership.util';
 
 type PageRow = RowDataPacket & {
   id: string;
@@ -107,7 +109,7 @@ export class PagesRepository {
         ? (editorConfig.headerBlock as Record<string, unknown>)
         : null;
     const headerFromBlocks = incomingBlocks.find((block) => String(block.type ?? '') === 'header') ?? null;
-    const headerBlock = headerFromConfig ?? headerFromBlocks;
+    const headerBlock = headerFromBlocks ?? headerFromConfig;
     const contentBlocks = incomingBlocks.filter((block) => String(block.type ?? '') !== 'header');
 
     return headerBlock ? [headerBlock, ...contentBlocks] : contentBlocks;
@@ -245,6 +247,60 @@ export class PagesRepository {
     return row ? this.loadPage(row.id) : null;
   }
 
+  async isUsernameAvailable(username: string, excludeId?: string) {
+    const nextUsername = this.normalizeSlug(username);
+    if (!nextUsername) {
+      return false;
+    }
+
+    const [rows] = await this.databaseService.execute<RowDataPacket[]>(
+      `SELECT id FROM pages WHERE username = ? LIMIT 1`,
+      [nextUsername],
+    );
+    const existing = rows[0];
+    if (!existing) {
+      return true;
+    }
+    return Boolean(excludeId && existing.id === excludeId);
+  }
+
+  private buildUniqueSuffix(seed: string) {
+    const compact = String(seed ?? '')
+      .replace(/[^a-z0-9]/gi, '')
+      .toLowerCase();
+    const tail = compact.slice(-4) || Math.random().toString(36).slice(2, 6);
+    return tail.padStart(4, '0').slice(0, 4);
+  }
+
+  async suggestUniqueSlug(base: string, ownerId?: string) {
+    const normalizedBase = this.normalizeSlug(base) || 'creator';
+    const suffix = this.buildUniqueSuffix(ownerId ?? normalizedBase);
+
+    const candidates = [
+      normalizedBase,
+      `${normalizedBase}-${suffix}`,
+      `${normalizedBase}-${Math.random().toString(36).slice(2, 6)}`,
+      `${normalizedBase}-${Date.now().toString(36).slice(-4)}`,
+    ];
+
+    for (const candidate of candidates) {
+      const slugAvailable = await this.isSlugAvailable(candidate);
+      const usernameAvailable = await this.isUsernameAvailable(candidate);
+      if (slugAvailable && usernameAvailable) {
+        return {
+          slug: candidate,
+          username: candidate,
+        };
+      }
+    }
+
+    const fallback = `${normalizedBase}-${Math.random().toString(36).slice(2, 8)}`;
+    return {
+      slug: this.normalizeSlug(fallback),
+      username: this.normalizeSlug(fallback),
+    };
+  }
+
   async isSlugAvailable(slug: string, excludeId?: string) {
     const nextSlug = this.normalizeSlug(slug);
     const [rows] = await this.databaseService.execute<RowDataPacket[]>(
@@ -262,6 +318,9 @@ export class PagesRepository {
     const record = this.buildTemplate(payload);
     if (!(await this.isSlugAvailable(String(record.slug), record.id))) {
       throw new ConflictException('Slug đã tồn tại');
+    }
+    if (!(await this.isUsernameAvailable(String(record.username), record.id))) {
+      throw new ConflictException('Username đã được sử dụng');
     }
 
     await this.databaseService.execute(
@@ -377,19 +436,30 @@ export class PagesRepository {
     return { ...current, id, slug: nextSlug, updatedAt: new Date().toISOString() };
   }
 
-  async updateSlugByUsername(username: string, slug: string) {
+  async updateSlugByUsername(username: string, slug: string, ownerId: string) {
     const normalizedUsername = this.normalizeSlug(username);
     const existing = (await this.findByUsername(normalizedUsername)) as Record<string, unknown> | null;
 
     if (!existing) {
-      return this.create({
-        title: `Landing page ${normalizedUsername}`,
-        username: normalizedUsername,
-        slug,
-      });
+      throw new NotFoundException('Không tìm thấy trang theo username.');
+    }
+
+    if (!isPageOwnedBy(existing, ownerId)) {
+      throw new ForbiddenException('Bạn không có quyền cập nhật slug của trang này.');
     }
 
     return this.updateSlug(String(existing.id), slug);
+  }
+
+  async getOwned(id: string, ownerId: string) {
+    const page = await this.loadPage(id);
+    if (!page) {
+      throw new NotFoundException('Không tìm thấy trang.');
+    }
+    if (!isPageOwnedBy(page, ownerId)) {
+      throw new ForbiddenException('Bạn không có quyền truy cập trang này.');
+    }
+    return page;
   }
 
   async findByOwnerId(ownerId: string) {
@@ -402,34 +472,10 @@ export class PagesRepository {
   }
 
   async findForAccount(user: { id?: string; name: string; email: string }) {
-    if (user.id) {
-      const byOwner = await this.findByOwnerId(user.id);
-      if (byOwner) {
-        return byOwner;
-      }
+    if (!user.id) {
+      return null;
     }
-
-    const usernames = [user.name, user.email.split('@')[0] || '']
-      .map((value) =>
-        value
-          .normalize('NFD')
-          .replace(/\p{Diacritic}/gu, '')
-          .trim()
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, '-')
-          .replace(/^-+|-+$/g, '')
-          .slice(0, 80),
-      )
-      .filter((value, index, all) => Boolean(value) && all.indexOf(value) === index);
-
-    for (const username of usernames) {
-      const page = await this.findByUsername(username);
-      if (page) {
-        return page;
-      }
-    }
-
-    return null;
+    return this.findByOwnerId(user.id);
   }
 
   async getEditorConfig(id: string) {

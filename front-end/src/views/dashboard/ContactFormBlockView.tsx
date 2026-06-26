@@ -12,7 +12,7 @@ import {
   type ContactFormField,
   updateContactForm,
 } from '@/services/contact-forms.service';
-import { getPageById, getPageByUsername, updatePage } from '@/services/pages.service';
+import { getPageById, getMyPage, updatePage } from '@/services/pages.service';
 import type { LandingPage, PageBlock } from '@/models/page.model';
 
 type FieldType = ContactFormField['type'];
@@ -131,21 +131,8 @@ export default function ContactFormBlockView() {
     let cancelled = false;
     void (async () => {
       try {
-        const usernameFromName = normalizeSlug(session?.user?.name || '');
-        const usernameFromEmail = normalizeSlug(session?.user?.email?.split('@')[0] || '');
-        const accountUsernames = [usernameFromName, usernameFromEmail].filter(
-          (value, index, all) => Boolean(value) && all.indexOf(value) === index,
-        );
-
-        let loadedPage: LandingPage | null = null;
-        for (const username of accountUsernames) {
-          const byUsername = await getPageByUsername(username);
-          if (byUsername && byUsername.status !== 'missing') {
-            loadedPage = byUsername;
-            break;
-          }
-        }
-        if (!loadedPage || loadedPage.status === 'missing') {
+        const loadedPage = await getMyPage();
+        if (!loadedPage?.id || loadedPage.status === 'missing') {
           if (!cancelled) {
             setPage(null);
           }
@@ -201,7 +188,7 @@ export default function ContactFormBlockView() {
     return () => {
       cancelled = true;
     };
-  }, [blockIdParam, session?.user?.email, session?.user?.name]);
+  }, [blockIdParam, session?.user?.id]);
 
   function addField(type: FieldType) {
     setFields((current) => {

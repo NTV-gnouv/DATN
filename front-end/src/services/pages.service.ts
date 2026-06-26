@@ -5,6 +5,20 @@ export async function listPages() {
   return apiRequest<LandingPage[]>('/pages');
 }
 
+export async function getMyPage() {
+  return apiRequest<LandingPage | null>('/pages/me');
+}
+
+export type SuggestedDomain = {
+  slug: string;
+  username: string;
+};
+
+export async function suggestDomain(base?: string) {
+  const query = base ? `?base=${encodeURIComponent(base)}` : '';
+  return apiRequest<SuggestedDomain>(`/pages/suggest-domain${query}`);
+}
+
 export async function getPageById(pageId: string) {
   return apiRequest<LandingPage>(`/pages/${pageId}`);
 }

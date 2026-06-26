@@ -28,7 +28,7 @@ export type PageAnalyticsOverview = {
 };
 
 export async function trackPageView(pageId: string, slug: string) {
-  const countryCode = await resolveClientCountryCode();
+  const countryCode = await resolveClientCountryCode().catch(() => undefined);
 
   return apiRequest<{ ok: boolean; id?: string }>('/analytics/page-views', {
     method: 'POST',

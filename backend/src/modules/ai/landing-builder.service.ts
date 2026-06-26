@@ -48,10 +48,40 @@ type SocialHandles = {
 
 type BuildFromProfileOptions = {
   ownerId?: string;
+  pageId?: string;
   avatarUrl?: string;
   socialHandles?: SocialHandles;
+  socialDisplayMode?: 'icons' | 'buttons' | 'both';
   uxDesign?: UxDesignProfile;
+  images?: Awaited<ReturnType<LandingBuilderService['resolveBrandImages']>>;
 };
+
+const SOCIAL_PLATFORM_ENTRIES: Array<{ platform: string; key: keyof SocialHandles }> = [
+  { platform: 'TikTok', key: 'tiktok' },
+  { platform: 'Instagram', key: 'instagram' },
+  { platform: 'YouTube', key: 'youtube' },
+  { platform: 'X', key: 'x' },
+];
+
+function buildSocialItemsFromHandles(
+  socialItems: Array<Record<string, unknown>>,
+  socialHandles: SocialHandles,
+): Array<Record<string, unknown>> {
+  const templateByPlatform = new Map(
+    socialItems.map((item) => [String(item.platform ?? '').toLowerCase(), item]),
+  );
+
+  return SOCIAL_PLATFORM_ENTRIES.map(({ platform, key }) => {
+    const handle = socialHandles[key] ?? '';
+    const url = buildSocialProfileUrl(platform, handle);
+    const template = templateByPlatform.get(platform.toLowerCase());
+    return {
+      platform,
+      url,
+      iconUrl: String(template?.iconUrl ?? ''),
+    };
+  }).filter((item) => Boolean(String(item.url ?? '').trim()));
+}
 
 function normalizeSocialHandle(raw: string): string {
   return String(raw ?? '')
@@ -168,11 +198,19 @@ export class LandingBuilderService {
     };
   }
 
+  async resolveStyleBackgroundUrls(profile: BrandProfile, ownerId: string, count = 3) {
+    const keywords =
+      profile.image_keywords?.length > 0
+        ? profile.image_keywords
+        : [profile.occupation, profile.name, profile.brand_style].filter(Boolean);
+    return this.unsplashService.fetchBackgroundVariants(keywords, ownerId, count);
+  }
+
   async buildFromProfile(profile: BrandProfile, ownerId: string, username: string, options: BuildFromProfileOptions = {}) {
     const socialHandles = options.socialHandles ?? {};
-    const images = await this.resolveBrandImages(profile, ownerId, socialHandles);
+    const images = options.images ?? (await this.resolveBrandImages(profile, ownerId, socialHandles));
     const galleryUrls = images.galleryUrls;
-    const page = await this.resolveTargetPage(profile, username, options.ownerId ?? ownerId);
+    const page = await this.resolveTargetPage(profile, username, options.ownerId ?? ownerId, options.pageId);
     const pageId = String(page.id);
 
     const defaultHeader = await this.blocksRepository.getDefaultHeaderBlock();
@@ -182,22 +220,11 @@ export class LandingBuilderService {
     const profileFields = (fields.profile ?? {}) as Record<string, unknown>;
     const typography = (fields.typography ?? {}) as Record<string, unknown>;
     const socials = (fields.socials ?? {}) as Record<string, unknown>;
-    const socialItems = Array.isArray(socials.items) ? [...(socials.items as Array<Record<string, unknown>>)] : [];
-
-    const platformHandleMap: Record<string, string> = {
-      TikTok: socialHandles.tiktok ?? '',
-      Instagram: socialHandles.instagram ?? '',
-      YouTube: socialHandles.youtube ?? '',
-      X: socialHandles.x ?? '',
-    };
-
-    for (const item of socialItems) {
-      const platform = String(item.platform ?? '');
-      const handle = platformHandleMap[platform] ?? '';
-      if (handle) {
-        item.url = buildSocialProfileUrl(platform, handle);
-      }
-    }
+    const defaultSocialItems = Array.isArray(socials.items)
+      ? [...(socials.items as Array<Record<string, unknown>>)]
+      : [];
+    const socialItems = buildSocialItemsFromHandles(defaultSocialItems, socialHandles);
+    const socialDisplayMode = options.socialDisplayMode ?? (socialItems.length > 0 ? 'both' : 'icons');
 
     const primary = profile.color_palette.primary.hex;
     const secondary = profile.color_palette.secondary_1.hex;
@@ -274,6 +301,7 @@ export class LandingBuilderService {
         },
         socials: {
           ...socials,
+          displayMode: socialDisplayMode,
           items: socialItems,
         },
       },
@@ -370,24 +398,36 @@ export class LandingBuilderService {
     }
   }
 
-  private async resolveTargetPage(profile: BrandProfile, username: string, ownerId?: string): Promise<ResolvedPage> {
-    const slug = normalizeSlug(profile.name);
-    const normalizedUsername = normalizeSlug(username) || slug;
-
-    const byUsername = (await this.pagesService.getByUsername(normalizedUsername)) as Record<string, unknown>;
-    if (byUsername.id && byUsername.status !== 'missing') {
-      return this.toResolvedPage(byUsername, true);
+  private async resolveTargetPage(
+    profile: BrandProfile,
+    username: string,
+    ownerId?: string,
+    pageId?: string,
+  ): Promise<ResolvedPage> {
+    if (pageId && ownerId) {
+      try {
+        const owned = (await this.pagesService.getOwned(pageId, ownerId)) as Record<string, unknown>;
+        if (owned?.id) {
+          return this.toResolvedPage(owned, true);
+        }
+      } catch {
+        // Fall through to owner lookup / create new page.
+      }
     }
 
-    const bySlug = (await this.pagesService.getBySlug(slug)) as Record<string, unknown>;
-    if (bySlug.id && bySlug.status !== 'missing') {
-      return this.toResolvedPage(bySlug, true);
+    if (ownerId) {
+      const byOwner = (await this.pagesService.findByOwnerId(ownerId)) as Record<string, unknown> | null;
+      if (byOwner?.id) {
+        return this.toResolvedPage(byOwner, true);
+      }
     }
 
+    const base = normalizeSlug(profile.name) || normalizeSlug(username) || 'creator';
+    const suggested = await this.pagesService.suggestDomain(ownerId ?? 'creator', base);
     const created = (await this.pagesService.createTemplate({
       title: profile.name,
-      username: normalizedUsername,
-      slug,
+      username: suggested.username,
+      slug: suggested.slug,
       ...(ownerId ? { ownerId } : {}),
     })) as Record<string, unknown>;
 

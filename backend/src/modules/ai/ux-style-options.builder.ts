@@ -2,7 +2,8 @@ import type { BrandProfile } from '@/shared/types/brand-profile.types';
 import type { UxDesignProfile } from '@/shared/types/ux-design.types';
 import {
   buildUxProfileFromPreset,
-  selectStylePresetsForProfile,
+  selectDiverseStylePresetsForProfile,
+  type UxStylePresetDefinition,
   type UxStyleOption,
 } from '@/shared/style-presets/ux-style-presets';
 
@@ -24,12 +25,33 @@ export function buildStyleOptionsFromProfile(
   options: { backgroundImageUrl?: string; pageKey: string; baseUx?: UxDesignProfile },
 ): UxStyleOption[] {
   const input = brandProfileToUxInput(profile);
-  const presets = selectStylePresetsForProfile(input);
+  const presets = selectDiverseStylePresetsForProfile(input);
+
+  return buildStyleOptionsForPresets(profile, presets, options);
+}
+
+export function buildStyleOptionsForPresets(
+  profile: BrandProfile,
+  presets: UxStylePresetDefinition[],
+  options: {
+    backgroundImageUrl?: string;
+    backgroundImageUrls?: string[];
+    pageKey: string;
+    baseUx?: UxDesignProfile;
+  },
+): UxStyleOption[] {
+  const input = brandProfileToUxInput(profile);
+  const imageBackgroundUrls = [...(options.backgroundImageUrls ?? [])];
+  let imageBackgroundIndex = 0;
 
   return presets.map((preset) => {
+    const usesImageBackground = preset.overrides.background_style === 'image';
+    const backgroundImageUrl = usesImageBackground
+      ? imageBackgroundUrls[imageBackgroundIndex++] ?? options.backgroundImageUrl
+      : options.backgroundImageUrl;
     const uxDesign = buildUxProfileFromPreset(preset, input, options.baseUx);
     const mapped = mapUxDesignToPage(uxDesign, input, {
-      backgroundImageUrl: options.backgroundImageUrl,
+      backgroundImageUrl,
       pageKey: `${options.pageKey}-${preset.id}`,
     });
 
@@ -38,6 +60,7 @@ export function buildStyleOptionsFromProfile(
       label: preset.label,
       description: preset.description,
       uxDesign,
+      backgroundImageUrl,
       preview: {
         themeTokens: mapped.themeTokens,
         headerPatch: mapped.headerPatch,

@@ -29,11 +29,14 @@ export function buildPageBackgroundStyle(pageBackground: PageBackground): CSSPro
     const angle = pageBackground.gradient.type === 'diagonal' ? '135deg' : '180deg';
     const gradientValue =
       pageBackground.gradient.type === 'radial'
-        ? `radial-gradient(circle, ${pageBackground.gradient.start} 0%, ${pageBackground.gradient.end} 100%)`
+        ? `radial-gradient(circle at center, ${pageBackground.gradient.start} 0%, ${pageBackground.gradient.end} 100%)`
         : `linear-gradient(${angle}, ${pageBackground.gradient.start} 0%, ${pageBackground.gradient.end} 100%)`;
 
     return {
       background: gradientValue,
+      backgroundSize: 'cover',
+      backgroundPosition: 'center center',
+      backgroundRepeat: 'no-repeat',
     };
   }
 
@@ -60,5 +63,8 @@ export function buildPageBackgroundStyle(pageBackground: PageBackground): CSSPro
 
   return {
     background: pageBackground.solid,
+    backgroundSize: 'cover',
+    backgroundPosition: 'center center',
+    backgroundRepeat: 'no-repeat',
   };
 }

@@ -18,6 +18,8 @@ export type AiChatStyleOption = {
   id: string;
   label: string;
   description: string;
+  uxDesign?: Record<string, unknown>;
+  backgroundImageUrl?: string;
   preview: {
     themeTokens: Record<string, unknown>;
     headerPatch: Record<string, unknown>;
@@ -107,13 +109,14 @@ export class AiChatRepository {
     );
   }
 
-  async create(userId: string, username: string, firstMessages: string[]): Promise<AiChatSessionRecord> {
+  async create(userId: string, username: string, firstMessages: string[], pageId?: string): Promise<AiChatSessionRecord> {
     const now = new Date().toISOString();
     const id = `ai-chat-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     const session: AiChatSessionRecord = {
       id,
       userId,
       username,
+      ...(pageId ? { pageId } : {}),
       status: 'collecting',
       currentStep: 0,
       answers: {},

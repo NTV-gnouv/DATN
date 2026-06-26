@@ -176,15 +176,16 @@
   border: 0;
   border-radius: 0;
   background: transparent;
-  height: auto;
   min-height: 0;
-  max-height: calc(100dvh - 120px);
-  overflow: visible;
-  align-self: start;
+  overflow: hidden;
+  align-self: stretch;
 }
 
 .ai-chat-phone-pane .editor-right-pane-shell {
   width: 100%;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .ai-chat-phone-pane .phone-review {
@@ -531,9 +532,22 @@
 }
 
 .ai-chat-layout.is-onboarding-only {
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1.2fr) minmax(260px, 360px);
   max-width: none;
   margin: 0;
+  height: auto;
+  min-height: min(72vh, 760px);
+  max-height: none;
+}
+
+@media (max-width: 960px) {
+  .ai-chat-layout.is-onboarding-only {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ai-chat-layout.is-onboarding-only .ai-chat-phone-pane-onboarding {
+    display: none;
+  }
 }
 
 .ai-chat-layout.is-onboarding-only .ai-chat-panel {

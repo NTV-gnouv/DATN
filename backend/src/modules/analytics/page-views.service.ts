@@ -136,8 +136,13 @@ export class PageViewsService {
       return output;
     }
 
+    const rangeStart = new Date(start);
+    rangeStart.setHours(0, 0, 0, 0);
+    const rangeEnd = new Date(end);
+    rangeEnd.setHours(23, 59, 59, 999);
+
     const events = (await this.repository.listByPageId(pageId))
-      .filter((event) => isEventInDateRange(event.viewedAt, new Date(start), new Date(end)))
+      .filter((event) => isEventInDateRange(event.viewedAt, rangeStart, rangeEnd))
       .sort((a, b) => a.viewedAt.localeCompare(b.viewedAt));
 
     return this.buildBucketedSeries(events, start, end, granularity);

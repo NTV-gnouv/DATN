@@ -22,28 +22,23 @@
 .phone-preview {
   display: flex;
   justify-content: center;
-  align-items: stretch;
+  align-items: flex-start;
   margin-top: 20px;
   margin-bottom: 12px;
   width: 100%;
-  min-height: 0;
-  max-height: min(570px, calc(100dvh - 200px));
 }
 
 .phone-preview-screen {
+  --phone-viewport-height: min(570px, calc(100dvh - 220px));
   width: 263px;
-  height: min(570px, calc(100dvh - 200px));
+  height: var(--phone-viewport-height);
   min-height: 0;
-  max-height: min(570px, calc(100dvh - 200px));
+  max-height: var(--phone-viewport-height);
   max-width: 100%;
   border: 2px solid var(--black);
   border-radius: 24px;
   background: #ffffff;
-  padding: var(--theme-preview-padding-y, 16px) var(--theme-preview-padding-x, 12px);
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: var(--theme-preview-gap, 12px);
+  padding: 0;
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -52,6 +47,28 @@
   box-sizing: border-box;
   scrollbar-width: thin;
   scrollbar-color: rgba(15, 23, 42, 0.28) transparent;
+}
+
+.phone-preview-canvas {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--theme-preview-gap, 12px);
+  box-sizing: border-box;
+  padding: var(--theme-preview-padding-y, 16px) var(--theme-preview-padding-x, 12px);
+}
+
+/* Cho phép cuộn block cuối lên gần đỉnh khung phone preview (chỉ editor). */
+.phone-preview .phone-preview-canvas::after {
+  content: '';
+  display: block;
+  flex-shrink: 0;
+  width: 100%;
+  height: max(
+    16px,
+    calc(var(--phone-viewport-height) - var(--theme-preview-padding-y, 16px) * 2)
+  );
+  pointer-events: none;
 }
 
 .phone-preview-screen::-webkit-scrollbar,
@@ -68,12 +85,12 @@
   border-radius: 999px;
 }
 
-.phone-preview-screen>*:not(.phone-avatar):not(.profile-header) {
+.phone-preview-canvas > *:not(.phone-avatar):not(.profile-header) {
   flex-shrink: 0;
   width: 100%;
 }
 
-.phone-preview-screen h4,
+.phone-preview-canvas h4,
 .public-preview-screen .profile-header.is-layout-stacked h4 {
   margin: 2px 0 0;
   font-size: var(--theme-title-size, 18px);
@@ -85,7 +102,7 @@
   word-break: break-word;
 }
 
-.phone-preview-screen p {
+.phone-preview-canvas p {
   margin: 0;
   color: var(--muted);
   text-align: center;
@@ -100,15 +117,14 @@
   margin-top: 0;
   margin-bottom: 0;
   width: 100%;
-  max-height: min(570px, calc(100dvh - 220px));
 }
 
-.phone-preview-screen h4,
+.phone-preview-canvas h4,
 .public-preview-screen h4 {
   margin: 0 0 6px;
 }
 
-.phone-preview-screen p,
+.phone-preview-canvas p,
 .public-preview-screen p {
   margin: 0 0 10px;
 }

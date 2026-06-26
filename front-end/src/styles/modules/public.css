@@ -16,14 +16,29 @@
 
 /* Public Landing Page - mobile-first theme canvas */
 .public-landing-page {
+  position: relative;
+  isolation: isolate;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
   margin: 0;
-  min-height: 100vh;
-  background-attachment: fixed;
-  background-position: center center;
-  background-size: cover;
+  width: 100%;
+  min-height: 100dvh;
+  background: transparent;
   padding: 0;
+}
+
+.public-page-background {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
 }
 
 .site-shell.site-shell--public .site-hero {
@@ -31,60 +46,76 @@
 }
 
 .public-landing-page .public-preview-screen {
+  position: relative;
+  z-index: 1;
   width: min(100%, 420px);
   max-width: 100%;
+  margin-inline: auto;
   box-sizing: border-box;
   border: none !important;
   border-radius: 0 !important;
   background: transparent !important;
   box-shadow: none !important;
-  padding: max(16px, env(safe-area-inset-top, 0px)) max(14px, env(safe-area-inset-right, 0px)) max(24px, env(safe-area-inset-bottom, 0px)) max(14px, env(safe-area-inset-left, 0px)) !important;
+  padding: 0 !important;
   height: auto !important;
-  min-height: 100vh;
+  min-height: 100dvh !important;
   max-height: none !important;
+  display: block;
+  overflow: visible !important;
+  flex: 1 0 auto;
+}
+
+.public-landing-page .public-preview-canvas {
   display: flex;
   flex-direction: column;
   align-items: stretch;
   gap: var(--theme-preview-gap, 14px);
-  overflow: visible !important;
-  margin: 0;
+  width: 100%;
+  min-height: 100dvh;
+  box-sizing: border-box;
+  background: transparent;
+  padding: max(16px, env(safe-area-inset-top, 0px)) max(14px, env(safe-area-inset-right, 0px)) max(24px, env(safe-area-inset-bottom, 0px)) max(14px, env(safe-area-inset-left, 0px));
 }
 
-.public-landing-page .public-preview-screen>*:not(.phone-avatar):not(.profile-header) {
+.public-landing-page .public-preview-canvas.mobile-theme-canvas[class*='theme-surface-'] {
+  background: transparent !important;
+}
+
+.public-landing-page .public-preview-canvas > *:not(.phone-avatar):not(.profile-header) {
   flex-shrink: 0;
   width: 100%;
 }
 
-.public-landing-page .public-preview-screen h4,
-.public-landing-page .public-preview-screen>p,
-.public-landing-page .public-preview-screen .phone-avatar,
-.public-landing-page .public-preview-screen .profile-avatar,
-.public-landing-page .public-preview-screen .phone-social-icons {
+.public-landing-page .public-preview-canvas h4,
+.public-landing-page .public-preview-canvas > p,
+.public-landing-page .public-preview-canvas .phone-avatar,
+.public-landing-page .public-preview-canvas .profile-avatar,
+.public-landing-page .public-preview-canvas .phone-social-icons {
   align-self: center;
   max-width: 100%;
 }
 
-.public-landing-page .public-preview-screen .profile-header.is-layout-horizontal .profile-avatar {
+.public-landing-page .public-preview-canvas .profile-header.is-layout-horizontal .profile-avatar {
   align-self: auto;
 }
 
-.public-landing-page .public-preview-screen h4 {
+.public-landing-page .public-preview-canvas h4 {
   font-size: var(--theme-title-size, clamp(18px, 5.4vw, 24px)) !important;
   line-height: 1.15;
   text-align: center;
 }
 
-.public-landing-page .public-preview-screen .profile-header.is-layout-horizontal h4 {
+.public-landing-page .public-preview-canvas .profile-header.is-layout-horizontal h4 {
   text-align: left;
   align-self: flex-start;
 }
 
-.public-landing-page .public-preview-screen>p {
+.public-landing-page .public-preview-canvas > p {
   font-size: var(--theme-bio-size, clamp(13px, 3.8vw, 15px));
   text-align: center;
 }
 
-.public-landing-page .public-preview-screen .phone-avatar {
+.public-landing-page .public-preview-canvas .phone-avatar {
   width: auto;
 }
 
@@ -95,9 +126,9 @@
 .public-landing-page .content-review-block,
 .public-landing-page .landing-contact-form,
 .public-landing-page .phone-social-buttons,
-.public-landing-page .profile-social-section>.phone-social-icons,
-.public-landing-page .public-preview-screen>.phone-link-card,
-.public-landing-page .public-preview-screen>.phone-content-card:not(.phone-social-button) {
+.public-landing-page .profile-social-section > .phone-social-icons,
+.public-landing-page .public-preview-canvas > .phone-link-card,
+.public-landing-page .public-preview-canvas > .phone-content-card:not(.phone-social-button) {
   width: var(--block-shell-width, 100%);
   max-width: 100%;
   margin-inline: auto;
@@ -112,7 +143,7 @@
   max-width: 100%;
   border: 2px solid var(--black);
   border-radius: 24px;
-  background: #ffffff;
+  background: transparent;
   padding: var(--theme-preview-padding-y, 16px) var(--theme-preview-padding-x, 12px);
   display: flex;
   flex-direction: column;

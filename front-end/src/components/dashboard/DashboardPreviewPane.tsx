@@ -4,6 +4,7 @@ import { PhonePagePreview } from '@/components/preview/PhonePagePreview';
 import { useDashboardPreviewData } from '@/hooks/useDashboardPreviewData';
 import type { HeaderBlock } from '@/models/editor.model';
 import type { LandingPage } from '@/models/page.model';
+import { normalizeHeaderBlock } from '@/utils/normalize-header-block';
 
 import { SelectedDomainToolbar } from './SelectedDomainToolbar';
 
@@ -36,7 +37,7 @@ export function DashboardPreviewPaneShell({
   const resolvedPage = previewPage ?? page;
   const shouldLoadConfig = headerBlock === undefined && themeTokens === undefined;
   const previewData = useDashboardPreviewData(shouldLoadConfig ? page?.id : undefined);
-  const resolvedHeaderBlock = headerBlock ?? previewData.headerBlock;
+  const resolvedHeaderBlock = normalizeHeaderBlock(headerBlock ?? previewData.headerBlock);
   const resolvedThemeTokens = themeTokens ?? previewData.themeTokens;
   const resolvedLoading = loading || (shouldLoadConfig && previewData.loading);
   const resolvedError = error || (shouldLoadConfig ? previewData.error : '');

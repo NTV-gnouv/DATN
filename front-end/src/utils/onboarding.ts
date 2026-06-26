@@ -1,7 +1,8 @@
 import type { AuthSession, AuthUser } from '@/models/auth.model';
 import type { LandingPage } from '@/models/page.model';
 import { loadSession, saveSession, syncUserProfile } from '@/services/auth.service';
-import { getPageById, getPageByUsername } from '@/services/pages.service';
+import { getMyPage, getPageById } from '@/services/pages.service';
+import { pageOwnedByUser } from '@/utils/page-ownership';
 import { normalizeSlug } from '@/utils/slug';
 
 export const ONBOARDING_PAGE_ID_KEY = 'shotvn.onboarding.pageId';
@@ -47,14 +48,6 @@ export async function refreshSessionFromServer(): Promise<AuthSession | null> {
   }
 }
 
-function pageOwnedByUser(page: LandingPage | null | undefined, userId: string): page is LandingPage {
-  if (!page?.id || page.status === 'missing' || !userId) {
-    return false;
-  }
-
-  return String(page.ownerId ?? '').trim() === userId;
-}
-
 async function findOwnedOnboardingPage(session: AuthSession): Promise<LandingPage | null> {
   const userId = session.user.id;
   if (!userId) {
@@ -63,18 +56,20 @@ async function findOwnedOnboardingPage(session: AuthSession): Promise<LandingPag
 
   const storedPageId = getOnboardingPageId();
   if (storedPageId) {
-    const storedPage = await getPageById(storedPageId);
-    if (pageOwnedByUser(storedPage, userId)) {
-      return storedPage;
+    try {
+      const storedPage = await getPageById(storedPageId);
+      if (pageOwnedByUser(storedPage, userId)) {
+        return storedPage;
+      }
+    } catch {
+      // Stored page is not owned by this user.
     }
     clearOnboardingPageId();
   }
 
-  for (const username of getAccountUsernames(session)) {
-    const page = await getPageByUsername(username);
-    if (pageOwnedByUser(page, userId)) {
-      return page;
-    }
+  const ownedPage = await getMyPage();
+  if (pageOwnedByUser(ownedPage, userId)) {
+    return ownedPage;
   }
 
   return null;

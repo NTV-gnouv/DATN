@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react';
 
 import type { HeaderBlock } from '@/models/editor.model';
 import type { AiChatStyleOption } from '@/services/ai-chat.service';
+import { normalizeHeaderBlock } from '@/utils/normalize-header-block';
 import { buildPageBackgroundStyle } from '@/utils/page-background';
 
 type StylePreviewState = {
@@ -10,7 +11,7 @@ type StylePreviewState = {
 };
 
 export function mergeStyleOptionPreview(
-  baseHeader: HeaderBlock,
+  baseHeaderInput: HeaderBlock,
   option: AiChatStyleOption,
   overrides?: {
     displayName?: string;
@@ -18,6 +19,11 @@ export function mergeStyleOptionPreview(
     avatarUrl?: string;
   },
 ): StylePreviewState {
+  const baseHeader = normalizeHeaderBlock(baseHeaderInput);
+  if (!baseHeader) {
+    throw new Error('Không thể tạo preview giao diện vì thiếu header block.');
+  }
+
   const patch = option.preview.headerPatch;
   const profilePatch = (patch.profile ?? {}) as Record<string, unknown>;
   const colorsPatch = (patch.colors ?? {}) as Record<string, unknown>;
@@ -25,7 +31,7 @@ export function mergeStyleOptionPreview(
   const divLayoutPatch = (patch.divLayout ?? {}) as Record<string, unknown>;
 
   return {
-    headerBlock: {
+    headerBlock: normalizeHeaderBlock({
       ...baseHeader,
       fields: {
         ...baseHeader.fields,
@@ -55,7 +61,7 @@ export function mergeStyleOptionPreview(
           ...(divLayoutPatch as HeaderBlock['fields']['divLayout']),
         },
       },
-    },
+    }) as HeaderBlock,
     themeTokens: option.preview.themeTokens,
   };
 }

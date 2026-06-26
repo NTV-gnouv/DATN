@@ -13,13 +13,38 @@ type ApiEnvelope<T> = {
   timestamp: string;
 };
 
+type ApiErrorBody = {
+  message?: unknown;
+  errors?: Record<string, string>;
+};
+
+export class ApiRequestError extends Error {
+  fieldErrors?: Record<string, string>;
+
+  constructor(message: string, fieldErrors?: Record<string, string>) {
+    super(message);
+    this.name = 'ApiRequestError';
+    this.fieldErrors = fieldErrors;
+  }
+}
+
 function extractMessage(payload: unknown): string {
   if (typeof payload === 'string') {
     return payload;
   }
 
   if (payload && typeof payload === 'object') {
-    const message = (payload as { message?: unknown }).message;
+    const record = payload as { message?: unknown; errors?: Record<string, string> };
+    const message = record.message;
+    const fieldErrors =
+      record.errors && typeof record.errors === 'object'
+        ? Object.values(record.errors).filter((item) => typeof item === 'string' && item.trim().length > 0)
+        : [];
+
+    if (fieldErrors.length > 0) {
+      return fieldErrors.join(' ');
+    }
+
     if (Array.isArray(message)) {
       return message.map((item) => String(item)).join(', ');
     }
@@ -32,6 +57,16 @@ function extractMessage(payload: unknown): string {
   }
 
   return 'Request failed';
+}
+
+function throwApiError(errorBody: unknown): never {
+  if (errorBody && typeof errorBody === 'object') {
+    const record = errorBody as ApiErrorBody;
+    const fieldErrors = record.errors && typeof record.errors === 'object' ? record.errors : undefined;
+    throw new ApiRequestError(extractMessage(errorBody), fieldErrors);
+  }
+
+  throw new ApiRequestError(extractMessage(errorBody));
 }
 
 function getAccessToken(): string {
@@ -94,13 +129,14 @@ async function refreshAccessToken(): Promise<string> {
 
 async function execute<T>(path: string, init: RequestInit, includeJsonContentType: boolean, tokenOverride?: string) {
   const token = tokenOverride ?? getAccessToken();
+  const { headers: initHeaders, ...restInit } = init;
   const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...restInit,
     headers: {
       ...(includeJsonContentType ? { 'Content-Type': 'application/json' } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(init.headers ?? {}),
+      ...(initHeaders ?? {}),
     },
-    ...init,
   });
 
   const payload = await response.json().catch(() => null) as ApiEnvelope<T> | { success?: boolean; error?: unknown } | null;
@@ -111,7 +147,6 @@ async function execute<T>(path: string, init: RequestInit, includeJsonContentTyp
 export async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
   const firstAttempt = await execute<T>(path, init, true);
   const firstErrorBody = firstAttempt.payload && 'error' in firstAttempt.payload ? firstAttempt.payload.error : firstAttempt.payload;
-  const firstErrorMessage = extractMessage(firstErrorBody);
 
   if (firstAttempt.response.status === 401 && getAccessToken()) {
     const nextAccessToken = await refreshAccessToken();
@@ -124,14 +159,14 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
     const retryErrorBody = retryAttempt.payload && 'error' in retryAttempt.payload ? retryAttempt.payload.error : retryAttempt.payload;
 
     if (!retryAttempt.response.ok || !retryAttempt.payload || retryAttempt.payload.success === false) {
-      throw new Error(extractMessage(retryErrorBody));
+      throwApiError(retryErrorBody);
     }
 
     return (retryAttempt.payload as ApiEnvelope<T>).data;
   }
 
   if (!firstAttempt.response.ok || !firstAttempt.payload || firstAttempt.payload.success === false) {
-    throw new Error(firstErrorMessage);
+    throwApiError(firstErrorBody);
   }
 
   return (firstAttempt.payload as ApiEnvelope<T>).data;
@@ -140,7 +175,6 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
 export async function apiUploadRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
   const firstAttempt = await execute<T>(path, init, false);
   const firstErrorBody = firstAttempt.payload && 'error' in firstAttempt.payload ? firstAttempt.payload.error : firstAttempt.payload;
-  const firstErrorMessage = extractMessage(firstErrorBody);
 
   if (firstAttempt.response.status === 401 && getAccessToken()) {
     const nextAccessToken = await refreshAccessToken();
@@ -153,14 +187,14 @@ export async function apiUploadRequest<T>(path: string, init: RequestInit = {}):
     const retryErrorBody = retryAttempt.payload && 'error' in retryAttempt.payload ? retryAttempt.payload.error : retryAttempt.payload;
 
     if (!retryAttempt.response.ok || !retryAttempt.payload || retryAttempt.payload.success === false) {
-      throw new Error(extractMessage(retryErrorBody));
+      throwApiError(retryErrorBody);
     }
 
     return (retryAttempt.payload as ApiEnvelope<T>).data;
   }
 
   if (!firstAttempt.response.ok || !firstAttempt.payload || firstAttempt.payload.success === false) {
-    throw new Error(firstErrorMessage);
+    throwApiError(firstErrorBody);
   }
 
   return (firstAttempt.payload as ApiEnvelope<T>).data;
