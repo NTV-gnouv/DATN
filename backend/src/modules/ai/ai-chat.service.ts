@@ -57,8 +57,13 @@ const CHAT_STEPS: ChatStep[] = [
   },
 ];
 
-function buildStyleChoiceMessage(optionCount: number): string {
-  return `Mình đã chuẩn bị ${optionCount} phong cách giao diện khác nhau — từ hiện đại, phác thảo tay, retro đến risograph. Hãy chọn kiểu bạn thích nhất!`;
+function buildSocialHandles(answers: Record<string, string>) {
+  return {
+    tiktok: answers.social_tiktok || '',
+    instagram: answers.social_instagram || '',
+    youtube: answers.social_youtube || '',
+    x: answers.social_x || '',
+  };
 }
 
 function normalizeSocialHandle(raw: string): string {
@@ -220,7 +225,7 @@ export class AiChatService {
       ...this.buildSessionPayload(session),
       canGenerate: session.status === 'ready',
       styleOptions: session.styleOptions ?? [],
-      awaitingStyleChoice: session.status === 'choosing_style',
+      awaitingStyleChoice: false,
     };
   }
 
@@ -243,11 +248,9 @@ export class AiChatService {
     if (session.status === 'choosing_style') {
       return {
         ...this.buildSessionPayload(session),
-        styleOptions: session.styleOptions ?? [],
-        awaitingStyleChoice: true,
-        newMessages: [this.toAssistantMessage('Hãy chọn một phong cách giao diện để mình hoàn tất trang nhé!')],
+        newMessages: [this.toAssistantMessage('Mình đang hoàn thiện landing page. Vui lòng đợi trong giây lát...')],
         awaitingInput: false,
-        canGenerate: false,
+        canGenerate: true,
       };
     }
 
@@ -501,14 +504,13 @@ export class AiChatService {
 
   async generateLandingPage(sessionId: string) {
     let session = await this.requireSession(sessionId);
+
     if (session.status === 'choosing_style') {
-      return {
-        session,
-        styleOptions: session.styleOptions ?? [],
-        profile: session.profile ?? null,
-        newMessages: [this.toAssistantMessage('Hãy chọn một phong cách giao diện bên dưới nhé!')],
-        awaitingStyleChoice: true,
-      };
+      const profile = session.profile as unknown as import('@/shared/types/brand-profile.types').BrandProfile | undefined;
+      const baseUx = session.baseUx as unknown as import('@/shared/types/ux-design.types').UxDesignProfile | undefined;
+      if (profile?.name && baseUx) {
+        return this.completeLandingBuild(session, profile, baseUx);
+      }
     }
 
     if (session.status !== 'ready' && session.status !== 'collecting') {
@@ -533,113 +535,83 @@ export class AiChatService {
 
     const profile = await this.brandProfileService.generateProfile({ name, occupation, description });
     session.profile = profile as unknown as Record<string, unknown>;
-    session = await this.appendMessage(session, 'assistant', 'Đang chuẩn bị nhiều phương án giao diện đa phong cách cho bạn lựa chọn...');
+    session = await this.appendMessage(session, 'assistant', 'Đang thiết kế giao diện landing page với AI...');
     session = await this.aiChatRepository.save(session);
 
-    const socialHandles = {
-      tiktok: session.answers.social_tiktok || '',
-      instagram: session.answers.social_instagram || '',
-      youtube: session.answers.social_youtube || '',
-      x: session.answers.social_x || '',
-    };
-
+    const socialHandles = buildSocialHandles(session.answers);
     const images = await this.landingBuilderService.resolveBrandImages(profile, session.userId, socialHandles);
     session.backgroundImageUrl = images.backgroundUrl;
 
     const { ux: baseUx, warnings: uxWarnings } = await this.uxDesignService.generateUxDesign(profile);
-    const styleOptions = this.uxDesignService.generateStyleOptions(profile, {
-      backgroundImageUrl: images.backgroundUrl,
-      pageKey: sessionId,
-      baseUx,
-    });
-
     session.baseUx = baseUx as unknown as Record<string, unknown>;
-    session.styleOptions = styleOptions.map((option) => ({
-      id: option.id,
-      label: option.label,
-      description: option.description,
-      preview: option.preview,
-    }));
-    session.status = 'choosing_style';
-    const styleChoiceMessage = buildStyleChoiceMessage(styleOptions.length);
-    session = await this.appendMessage(session, 'assistant', styleChoiceMessage);
-    session = await this.aiChatRepository.save(session);
 
     if (uxWarnings.length) {
       this.logger.warn(`UX design warnings for session ${sessionId}: ${uxWarnings.join('; ')}`);
     }
 
-    return {
-      session,
-      profile,
-      styleOptions: session.styleOptions,
-      baseUx,
-      images,
-      newMessages: [this.toAssistantMessage(styleChoiceMessage)],
-      awaitingStyleChoice: true,
-    };
+    session = await this.appendMessage(session, 'assistant', 'Đang hoàn thiện landing page theo phong cách AI đã thiết kế...');
+    session = await this.aiChatRepository.save(session);
+
+    return this.completeLandingBuild(session, profile, baseUx, images);
   }
 
   async applyStyleChoice(sessionId: string, styleOptionId: string) {
     let session = await this.requireSession(sessionId);
-    if (session.status !== 'choosing_style') {
-      throw new BadRequestException('Phiên chat hiện không ở bước chọn kiểu giao diện.');
-    }
-
     const profile = session.profile as unknown as import('@/shared/types/brand-profile.types').BrandProfile | undefined;
     if (!profile?.name) {
       throw new BadRequestException('Không tìm thấy hồ sơ thương hiệu để tạo trang.');
     }
 
-    const styleOptions = this.uxDesignService.generateStyleOptions(profile, {
-      backgroundImageUrl: session.backgroundImageUrl,
-      pageKey: sessionId,
-      baseUx: session.baseUx as import('@/shared/types/ux-design.types').UxDesignProfile | undefined,
-    });
-    const selected = styleOptions.find((option) => option.id === styleOptionId);
-    if (!selected) {
-      throw new BadRequestException('Kiểu giao diện không hợp lệ.');
+    const baseUx = session.baseUx as unknown as import('@/shared/types/ux-design.types').UxDesignProfile | undefined;
+    if (!baseUx) {
+      throw new BadRequestException('Không tìm thấy thiết kế giao diện AI để tạo trang.');
     }
 
     session.status = 'generating';
     session.selectedStyleId = styleOptionId;
-    session = await this.appendMessage(session, 'assistant', `Đang áp dụng kiểu "${selected.label}" và hoàn thiện landing page...`);
+    session = await this.appendMessage(session, 'assistant', 'Đang hoàn thiện landing page...');
     session = await this.aiChatRepository.save(session);
 
+    return this.completeLandingBuild(session, profile, baseUx);
+  }
+
+  private async completeLandingBuild(
+    session: AiChatSessionRecord,
+    profile: import('@/shared/types/brand-profile.types').BrandProfile,
+    uxDesign: import('@/shared/types/ux-design.types').UxDesignProfile,
+    images?: Awaited<ReturnType<LandingBuilderService['resolveBrandImages']>>,
+  ) {
     const built = await this.landingBuilderService.buildFromProfile(profile, session.userId, session.username, {
+      ownerId: session.userId,
       avatarUrl: session.answers.social_avatar_url || undefined,
-      socialHandles: {
-        tiktok: session.answers.social_tiktok || '',
-        instagram: session.answers.social_instagram || '',
-        youtube: session.answers.social_youtube || '',
-        x: session.answers.social_x || '',
-      },
-      uxDesign: selected.uxDesign,
+      socialHandles: buildSocialHandles(session.answers),
+      uxDesign,
     });
 
-    session.pageId = built.pageId;
-    session.status = 'completed';
+    let nextSession = session;
+    nextSession.pageId = built.pageId;
+    nextSession.status = 'completed';
     const successMessages = built.updatedExisting
       ? [
-          `Xong rồi! Landing page "${profile.name}" đã được cập nhật với kiểu ${selected.label}.`,
+          `Xong rồi! Landing page "${profile.name}" đã được cập nhật với giao diện do AI thiết kế.`,
           'Bạn có thể mở editor để tinh chỉnh thêm nhé 🎉',
         ]
       : [
-          `Xong rồi! Landing page "${profile.name}" đã được tạo với kiểu ${selected.label}.`,
+          `Xong rồi! Landing page "${profile.name}" đã được tạo với giao diện do AI thiết kế.`,
           'Bạn có thể mở editor để tinh chỉnh thêm nhé 🎉',
         ];
-    session = await this.appendMessages(session, successMessages);
-    session = await this.aiChatRepository.save(session);
+    nextSession = await this.appendMessages(nextSession, successMessages);
+    nextSession = await this.aiChatRepository.save(nextSession);
 
     return {
-      session,
+      session: nextSession,
       pageId: built.pageId,
       slug: built.slug,
       profile,
-      uxDesign: selected.uxDesign,
-      styleOptionId,
-      images: built.images,
+      uxDesign,
+      images: images ?? built.images,
       newMessages: successMessages.map((content) => this.toAssistantMessage(content)),
+      awaitingStyleChoice: false,
     };
   }
 

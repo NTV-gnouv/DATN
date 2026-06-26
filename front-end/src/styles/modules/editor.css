@@ -96,6 +96,8 @@
   position: sticky;
   top: 16px;
   align-self: start;
+  max-height: calc(100dvh - 32px);
+  min-height: 0;
 }
 
 .editor-section:first-of-type {
@@ -129,6 +131,8 @@
 .editor-right-pane-shell {
   display: grid;
   gap: 14px;
+  min-height: 0;
+  max-height: calc(100dvh - 32px);
 }
 
 .editor-quick-btn {

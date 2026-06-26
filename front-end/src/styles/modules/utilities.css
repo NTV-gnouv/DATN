@@ -151,8 +151,7 @@ a {
 }
 
 .mobile-theme-canvas {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  min-height: 0;
 }
 
 .profile-header {
@@ -506,9 +505,9 @@ a {
 
   .phone-preview-screen {
     width: min(320px, 100%);
-    height: min(640px, calc(100vh - 96px));
-    min-height: 560px;
-    max-height: min(640px, calc(100vh - 96px));
+    height: min(640px, calc(100dvh - 120px));
+    min-height: 0;
+    max-height: min(640px, calc(100dvh - 120px));
     border-radius: 18px;
     padding: 18px 12px 18px;
     gap: 14px;

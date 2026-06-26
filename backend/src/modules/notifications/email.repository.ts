@@ -48,8 +48,8 @@ export class EmailRepository {
     };
 
     await this.databaseService.execute(
-      `INSERT INTO email_logs (id, recipient, subject, template, status, error_message, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO email_logs (id, recipient, subject, template, status, error_message)
+       VALUES (?, ?, ?, ?, ?, ?)`,
       [
         id,
         next.to,
@@ -57,7 +57,6 @@ export class EmailRepository {
         next.template,
         next.status,
         next.errorMessage ?? null,
-        next.createdAt,
       ],
     );
 

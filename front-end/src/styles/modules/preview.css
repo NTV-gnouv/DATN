@@ -22,15 +22,19 @@
 .phone-preview {
   display: flex;
   justify-content: center;
+  align-items: stretch;
   margin-top: 20px;
   margin-bottom: 12px;
+  width: 100%;
+  min-height: 0;
+  max-height: min(570px, calc(100dvh - 200px));
 }
 
 .phone-preview-screen {
   width: 263px;
-  height: 570px;
-  min-height: 570px;
-  max-height: 570px;
+  height: min(570px, calc(100dvh - 200px));
+  min-height: 0;
+  max-height: min(570px, calc(100dvh - 200px));
   max-width: 100%;
   border: 2px solid var(--black);
   border-radius: 24px;
@@ -42,18 +46,26 @@
   gap: var(--theme-preview-gap, 12px);
   overflow-x: hidden;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
   -webkit-overflow-scrolling: touch;
   box-sizing: border-box;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(15, 23, 42, 0.28) transparent;
 }
 
 .phone-preview-screen::-webkit-scrollbar,
 .public-preview-screen::-webkit-scrollbar,
 .mobile-theme-canvas::-webkit-scrollbar {
-  width: 0;
-  height: 0;
-  display: none;
+  width: 6px;
+  height: 6px;
+}
+
+.phone-preview-screen::-webkit-scrollbar-thumb,
+.public-preview-screen::-webkit-scrollbar-thumb,
+.mobile-theme-canvas::-webkit-scrollbar-thumb {
+  background: rgba(15, 23, 42, 0.24);
+  border-radius: 999px;
 }
 
 .phone-preview-screen>*:not(.phone-avatar):not(.profile-header) {
@@ -88,6 +100,7 @@
   margin-top: 0;
   margin-bottom: 0;
   width: 100%;
+  max-height: min(570px, calc(100dvh - 220px));
 }
 
 .phone-preview-screen h4,

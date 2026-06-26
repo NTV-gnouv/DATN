@@ -3,7 +3,6 @@ import { ArrowLeftIcon, ArrowUpIcon, SparklesIcon } from '@heroicons/react/24/ou
 import { useNavigate } from 'react-router-dom';
 
 import { AiChatBubble } from '@/components/ai-chat/AiChatBubble';
-import { AiStylePicker } from '@/components/ai-chat/AiStylePicker';
 import { AiChatSocialForm, type SocialFormErrors, type SocialFormValues } from '@/components/ai-chat/AiChatSocialForm';
 import { DashboardPreviewPaneShell } from '@/components/dashboard/DashboardPreviewPane';
 import { DashboardShell } from '@/components/layout/DashboardShell';
@@ -19,7 +18,6 @@ import { getPageById, getPageByUsername, getPageEditorConfig } from '@/services/
 import { clearOnboardingPageId, getOnboardingPageId } from '@/utils/onboarding';
 import {
   AI_CHAT_SUGGESTED_DESCRIPTION,
-  applyAiChatStyle,
   generateAiChatLandingPage,
   goBackAiChat,
   sendAiChatMessage,
@@ -28,9 +26,7 @@ import {
   type AiChatInputType,
   type AiChatSession,
   type AiChatSocialPrefill,
-  type AiChatStyleOption,
 } from '@/services/ai-chat.service';
-import { mergeStyleOptionPreview } from '@/utils/ai-style-preview';
 
 function normalizeSlug(value: string) {
   return String(value || '')
@@ -165,11 +161,6 @@ export default function AiChatOnboardingView({ mode = 'dashboard' }: { mode?: 'd
   const [previewLoading, setPreviewLoading] = useState(true);
   const [previewError, setPreviewError] = useState('');
   const [stepTransitioning, setStepTransitioning] = useState(false);
-  const [styleOptions, setStyleOptions] = useState<AiChatStyleOption[]>([]);
-  const [awaitingStyleChoice, setAwaitingStyleChoice] = useState(false);
-  const [applyingStyle, setApplyingStyle] = useState(false);
-  const [selectedStyleId, setSelectedStyleId] = useState('');
-  const [hoveredStyleId, setHoveredStyleId] = useState('');
   const [finishing, setFinishing] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
@@ -305,34 +296,13 @@ export default function AiChatOnboardingView({ mode = 'dashboard' }: { mode?: 'd
   const previewBio = chatSession?.answers?.description || chatSession?.answers?.occupation;
   const previewAvatarOverride = previewAvatarUrl || chatSession?.answers?.social_avatar_url || '';
 
-  const activeStyleOption = useMemo(() => {
-    const activeId = hoveredStyleId || selectedStyleId || styleOptions[0]?.id;
-    return styleOptions.find((option) => option.id === activeId) ?? styleOptions[0] ?? null;
-  }, [hoveredStyleId, selectedStyleId, styleOptions]);
-
-  const styledPreview = useMemo(() => {
-    if (!awaitingStyleChoice || !activeStyleOption || !basePreviewHeaderBlock) {
-      return {
-        headerBlock: previewHeaderBlock,
-        themeTokens: previewThemeTokens,
-      };
-    }
-
-    return mergeStyleOptionPreview(basePreviewHeaderBlock, activeStyleOption, {
-      displayName: previewDisplayName,
-      bio: previewBio,
-      avatarUrl: previewAvatarOverride,
-    });
-  }, [
-    activeStyleOption,
-    awaitingStyleChoice,
-    basePreviewHeaderBlock,
-    previewAvatarOverride,
-    previewBio,
-    previewDisplayName,
-    previewHeaderBlock,
-    previewThemeTokens,
-  ]);
+  const styledPreview = useMemo(
+    () => ({
+      headerBlock: previewHeaderBlock,
+      themeTokens: previewThemeTokens,
+    }),
+    [previewHeaderBlock, previewThemeTokens],
+  );
 
   useEffect(() => {
     if (pendingMessages.length === 0 || activeAnimatedId) {
@@ -353,7 +323,7 @@ export default function AiChatOnboardingView({ mode = 'dashboard' }: { mode?: 'd
       return;
     }
     node.scrollTop = node.scrollHeight;
-  }, [messages, activeAnimatedId, submitting, generating, stepTransitioning, styleOptions, awaitingStyleChoice]);
+  }, [messages, activeAnimatedId, submitting, generating, stepTransitioning]);
 
   function handleTypedComplete(messageId: string) {
     setActiveAnimatedId((current) => (current === messageId ? null : current));
@@ -509,8 +479,6 @@ export default function AiChatOnboardingView({ mode = 'dashboard' }: { mode?: 'd
     setCanGenerate(false);
     setError('');
     setAwaitingInput(false);
-    setAwaitingStyleChoice(false);
-    setStyleOptions([]);
 
     for (const content of GENERATING_MESSAGES) {
       showAssistantStatus(content);
@@ -522,13 +490,6 @@ export default function AiChatOnboardingView({ mode = 'dashboard' }: { mode?: 'd
       setChatSession(result.session);
       showAssistantStep(result.newMessages, false);
 
-      if (result.awaitingStyleChoice && result.styleOptions?.length) {
-        setStyleOptions(result.styleOptions);
-        setAwaitingStyleChoice(true);
-        setSelectedStyleId(result.styleOptions[0]?.id ?? '');
-        return;
-      }
-
       if (result.pageId) {
         setPageId(result.pageId);
       }
@@ -537,29 +498,6 @@ export default function AiChatOnboardingView({ mode = 'dashboard' }: { mode?: 'd
       setCanGenerate(true);
     } finally {
       setGenerating(false);
-    }
-  }
-
-  async function handleStyleSelect(styleOptionId: string) {
-    if (!chatSession || applyingStyle || !styleOptionId) {
-      return;
-    }
-
-    setApplyingStyle(true);
-    setSelectedStyleId(styleOptionId);
-    setError('');
-
-    try {
-      const result = await applyAiChatStyle(chatSession.id, styleOptionId);
-      setChatSession(result.session);
-      setPageId(result.pageId);
-      setAwaitingStyleChoice(false);
-      setStyleOptions([]);
-      showAssistantStep(result.newMessages, false);
-    } catch (caughtError) {
-      setError(caughtError instanceof Error ? caughtError.message : 'Không thể áp dụng kiểu giao diện');
-    } finally {
-      setApplyingStyle(false);
     }
   }
 
@@ -585,8 +523,6 @@ export default function AiChatOnboardingView({ mode = 'dashboard' }: { mode?: 'd
     Boolean(chatSession) &&
     !isLandingReady &&
     !generating &&
-    !applyingStyle &&
-    !awaitingStyleChoice &&
     !loading &&
     !stepTransitioning &&
     !submitting &&
@@ -642,17 +578,6 @@ export default function AiChatOnboardingView({ mode = 'dashboard' }: { mode?: 'd
                   onSubmit={(values) => void handleSocialSubmit(values)}
                 />
               ) : null}
-              {awaitingStyleChoice && styleOptions.length > 0 ? (
-                <AiStylePicker
-                  options={styleOptions}
-                  selectedId={selectedStyleId}
-                  hoveredId={hoveredStyleId}
-                  applying={applyingStyle}
-                  disabled={generating}
-                  onSelect={(optionId) => void handleStyleSelect(optionId)}
-                  onHover={(optionId) => setHoveredStyleId(optionId ?? '')}
-                />
-              ) : null}
             </div>
           </div>
 
@@ -700,8 +625,6 @@ export default function AiChatOnboardingView({ mode = 'dashboard' }: { mode?: 'd
                       ? 'Điền mạng xã hội trong form phía trên.'
                       : canGenerate
                         ? 'Sẵn sàng tạo trang — bấm nút bên phải.'
-                        : awaitingStyleChoice
-                          ? 'Chọn một kiểu giao diện ở trên.'
                         : generating
                           ? 'AI đang xử lý...'
                           : 'Đang chờ AI...'}

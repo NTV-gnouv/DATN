@@ -85,8 +85,8 @@ export class ContactFormsRepository {
 
   async saveForm(record: ContactFormRecord): Promise<ContactFormRecord> {
     await this.databaseService.execute(
-      `INSERT INTO contact_forms (id, name, description, submit_label, success_message, status, fields, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `INSERT INTO contact_forms (id, name, description, submit_label, success_message, status, fields)
+       VALUES (?, ?, ?, ?, ?, ?, ?)
        ON DUPLICATE KEY UPDATE
          name = VALUES(name),
          description = VALUES(description),
@@ -94,7 +94,7 @@ export class ContactFormsRepository {
          success_message = VALUES(success_message),
          status = VALUES(status),
          fields = VALUES(fields),
-         updated_at = VALUES(updated_at)`,
+         updated_at = CURRENT_TIMESTAMP`,
       [
         record.id,
         record.name,
@@ -103,8 +103,6 @@ export class ContactFormsRepository {
         record.successMessage,
         record.status,
         JSON.stringify(record.fields),
-        record.createdAt,
-        record.updatedAt,
       ],
     );
     return record;
@@ -139,7 +137,7 @@ export class ContactFormsRepository {
     await this.databaseService.withTransaction(async () => {
       await this.databaseService.execute(
         `INSERT INTO contact_form_submissions (id, form_id, payload, ip, user_agent, page_url, field_labels, submitted_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+         VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
          ON DUPLICATE KEY UPDATE
            form_id = VALUES(form_id),
            payload = VALUES(payload),
@@ -147,7 +145,7 @@ export class ContactFormsRepository {
            user_agent = VALUES(user_agent),
            page_url = VALUES(page_url),
            field_labels = VALUES(field_labels),
-           submitted_at = VALUES(submitted_at)`,
+           submitted_at = CURRENT_TIMESTAMP`,
         [
           record.id,
           record.formId,
@@ -156,7 +154,6 @@ export class ContactFormsRepository {
           record.metadata.userAgent,
           record.metadata.pageUrl,
           toJsonColumn(record.metadata.fieldLabels ?? null),
-          record.metadata.submittedAt,
         ],
       );
 

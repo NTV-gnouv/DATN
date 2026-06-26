@@ -47,6 +47,7 @@ type SocialHandles = {
 };
 
 type BuildFromProfileOptions = {
+  ownerId?: string;
   avatarUrl?: string;
   socialHandles?: SocialHandles;
   uxDesign?: UxDesignProfile;
@@ -171,7 +172,7 @@ export class LandingBuilderService {
     const socialHandles = options.socialHandles ?? {};
     const images = await this.resolveBrandImages(profile, ownerId, socialHandles);
     const galleryUrls = images.galleryUrls;
-    const page = await this.resolveTargetPage(profile, username);
+    const page = await this.resolveTargetPage(profile, username, options.ownerId ?? ownerId);
     const pageId = String(page.id);
 
     const defaultHeader = await this.blocksRepository.getDefaultHeaderBlock();
@@ -322,7 +323,7 @@ export class LandingBuilderService {
     };
 
     await this.pagesService.updateEditorConfig(pageId, {
-      themeId: uxMapping ? `ai-ux-${pageId}` : `ai-brand-${pageId}`,
+      themeId: 'minimal',
       headerBlockId: String(headerBlock.id),
       headerBlock,
       themeTokens: uxMapping?.themeTokens ?? {
@@ -336,6 +337,7 @@ export class LandingBuilderService {
       blocks: [headerBlock, textBlock, galleryBlock, contactFormBlock],
       title: profile.name,
       username: normalizeSlug(username) || normalizeSlug(profile.name),
+      ownerId: options.ownerId ?? ownerId,
     });
 
     return {
@@ -368,7 +370,7 @@ export class LandingBuilderService {
     }
   }
 
-  private async resolveTargetPage(profile: BrandProfile, username: string): Promise<ResolvedPage> {
+  private async resolveTargetPage(profile: BrandProfile, username: string, ownerId?: string): Promise<ResolvedPage> {
     const slug = normalizeSlug(profile.name);
     const normalizedUsername = normalizeSlug(username) || slug;
 
@@ -386,6 +388,7 @@ export class LandingBuilderService {
       title: profile.name,
       username: normalizedUsername,
       slug,
+      ...(ownerId ? { ownerId } : {}),
     })) as Record<string, unknown>;
 
     return this.toResolvedPage(created, false);
