@@ -1,4 +1,5 @@
 import type { AuthSession, AuthUser } from '@/models/auth.model';
+import type { LandingPage } from '@/models/page.model';
 import { loadSession, saveSession, syncUserProfile } from '@/services/auth.service';
 import { getPageById, getPageByUsername } from '@/services/pages.service';
 import { normalizeSlug } from '@/utils/slug';
@@ -46,25 +47,48 @@ export async function refreshSessionFromServer(): Promise<AuthSession | null> {
   }
 }
 
-export async function resolveOnboardingPathFromSession(session: AuthSession | null) {
-  if (!session || !isOnboardingRequired(session.user)) {
-    return '/dashboard';
+function pageOwnedByUser(page: LandingPage | null | undefined, userId: string): page is LandingPage {
+  if (!page?.id || page.status === 'missing' || !userId) {
+    return false;
+  }
+
+  return String(page.ownerId ?? '').trim() === userId;
+}
+
+async function findOwnedOnboardingPage(session: AuthSession): Promise<LandingPage | null> {
+  const userId = session.user.id;
+  if (!userId) {
+    return null;
   }
 
   const storedPageId = getOnboardingPageId();
   if (storedPageId) {
     const storedPage = await getPageById(storedPageId);
-    if (storedPage?.id && storedPage.status !== 'missing') {
-      return '/onboarding/chat';
+    if (pageOwnedByUser(storedPage, userId)) {
+      return storedPage;
     }
+    clearOnboardingPageId();
   }
 
   for (const username of getAccountUsernames(session)) {
     const page = await getPageByUsername(username);
-    if (page?.id && page.status !== 'missing') {
-      saveOnboardingPageId(page.id);
-      return '/onboarding/chat';
+    if (pageOwnedByUser(page, userId)) {
+      return page;
     }
+  }
+
+  return null;
+}
+
+export async function resolveOnboardingPathFromSession(session: AuthSession | null) {
+  if (!session || !isOnboardingRequired(session.user)) {
+    return '/dashboard';
+  }
+
+  const ownedPage = await findOwnedOnboardingPage(session);
+  if (ownedPage) {
+    saveOnboardingPageId(ownedPage.id);
+    return '/onboarding/chat';
   }
 
   return '/onboarding/domain';

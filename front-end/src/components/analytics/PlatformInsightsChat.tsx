@@ -71,7 +71,7 @@ export function PlatformInsightsChat({
   pageId,
   slug,
   dateRange,
-  assistantName = 'Beam',
+  assistantName = 'Nova',
   placeholder,
   suggestedPrompts = DEFAULT_PROMPTS,
   disabled = false,

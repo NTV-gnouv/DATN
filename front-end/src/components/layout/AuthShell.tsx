@@ -15,7 +15,7 @@ export function AuthShell({ eyebrow, title, subtitle, children }: AuthShellProps
           <BrandLogo />
           <div>
             <p className="eyebrow">ShotVN</p>
-            <h1>Trang nhà sáng tạo kiểu Beacons với hệ thống triển khai gọn hơn.</h1>
+            <h1>Trang nhà thiết kế ladingpage.</h1>
           </div>
         </div>
         <div className="auth-shell-copy">

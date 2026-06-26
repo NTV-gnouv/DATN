@@ -8,6 +8,7 @@ export type LandingPage = {
   title: string;
   slug: string;
   username?: string;
+  ownerId?: string;
   status?: string;
   template?: string;
   themeId?: string;

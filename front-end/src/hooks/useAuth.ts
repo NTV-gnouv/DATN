@@ -53,6 +53,7 @@ export function useAuth() {
     setError('');
     try {
       await register(payload);
+      clearOnboardingPageId();
       const session = await login({ email: payload.email, password: payload.password });
       saveSession(session);
       return await redirectAfterAuth(session);
