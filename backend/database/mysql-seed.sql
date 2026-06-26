@@ -1,30 +1,36 @@
 -- ShotVN seed data (optional — backend cũng seed khi khởi động lần đầu)
--- Dùng INSERT IGNORE để không ghi đè dữ liệu đã có
+-- Thứ tự insert tuân theo foreign key
 
-INSERT IGNORE INTO auth_users (record_id, payload)
-VALUES ('admin@shotvn.local', JSON_OBJECT(
-  'id', 'u-admin',
-  'email', 'admin@shotvn.local',
-  'name', 'System Admin',
-  'role', 'admin',
-  'onboardingCompleted', true,
-  'passwordHash', '$2b$10$E0SsGvHLXFZ5vboPfsM/9ODAOifan3kqqmMHEAcGFbWKQdJYNscji'
-));
+INSERT IGNORE INTO auth_users (id, email, name, role, password_hash, onboarding_completed)
+VALUES (
+  'u-admin',
+  'admin@shotvn.local',
+  'System Admin',
+  'admin',
+  '$2b$10$E0SsGvHLXFZ5vboPfsM/9ODAOifan3kqqmMHEAcGFbWKQdJYNscji',
+  1
+);
 
-INSERT IGNORE INTO users (record_id, payload)
-VALUES ('u-demo', JSON_OBJECT('id', 'u-demo', 'name', 'Demo User', 'role', 'creator'));
+INSERT IGNORE INTO user_profiles (id, name, role)
+VALUES ('u-demo', 'Demo User', 'creator');
 
-INSERT IGNORE INTO pages (record_id, payload)
-VALUES ('p-demo', JSON_OBJECT(
-  'id', 'p-demo',
-  'title', 'My Landing Page',
-  'slug', 'my-landing-page',
-  'username', 'demo',
-  'status', 'draft'
-));
+INSERT IGNORE INTO themes (id, name, version, enabled)
+VALUES
+  ('minimal', 'Minimal Theme', '1.0.0', 1),
+  ('theme-demo', 'Minimal Theme', '1.0.0', 1);
 
-INSERT IGNORE INTO themes (record_id, payload)
-VALUES ('theme-demo', JSON_OBJECT('id', 'theme-demo', 'name', 'Minimal Theme', 'version', '1.0.0', 'enabled', true));
+INSERT IGNORE INTO plugins (id, name, version, plugin_type, enabled)
+VALUES ('plugin-demo', 'Hero Block', '1.0.0', 'block', 1);
 
-INSERT IGNORE INTO plugins (record_id, payload)
-VALUES ('plugin-demo', JSON_OBJECT('id', 'plugin-demo', 'name', 'Hero Block', 'version', '1.0.0', 'type', 'block', 'enabled', true));
+INSERT IGNORE INTO pages (id, title, slug, username, theme_id, status)
+VALUES ('p-demo', 'My Landing Page', 'my-landing-page', 'demo', 'minimal', 'draft');
+
+INSERT IGNORE INTO block_definitions (id, block_type, name, version, is_default, default_data)
+VALUES (
+  'block-header-default',
+  'header',
+  'header',
+  '1.0.0',
+  1,
+  JSON_OBJECT('fields', JSON_OBJECT())
+);

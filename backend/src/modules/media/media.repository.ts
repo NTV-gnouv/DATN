@@ -1,5 +1,8 @@
 import { Injectable } from '@nestjs/common';
+import { RowDataPacket } from 'mysql2/promise';
+
 import { DatabaseService } from '@/core/database/database.service';
+import { normalizeJsonPayload, toJsonColumn } from '@/core/database/json-payload.util';
 
 type MediaRecord = {
   id: string;
@@ -17,19 +20,61 @@ type MediaRecord = {
   variants: Record<string, string>;
 };
 
+type MediaRow = RowDataPacket & {
+  id: string;
+  owner_id: string | null;
+  original_name: string;
+  mime_type: string;
+  size: number;
+  purpose: string | null;
+  width: number | null;
+  height: number | null;
+  storage_key: string;
+  preview_path: string | null;
+  thumb_path: string | null;
+  public_url: string;
+  variants: unknown;
+};
+
 @Injectable()
 export class MediaRepository {
   constructor(private readonly databaseService: DatabaseService) {}
 
-  private readonly entityName = 'media';
+  private mapRow(row: MediaRow): MediaRecord {
+    const variants = normalizeJsonPayload(row.variants);
+    return {
+      id: row.id,
+      ...(row.owner_id ? { ownerId: row.owner_id } : {}),
+      originalName: row.original_name,
+      mimeType: row.mime_type,
+      size: Number(row.size),
+      ...(row.purpose ? { purpose: row.purpose as MediaRecord['purpose'] } : {}),
+      width: row.width,
+      height: row.height,
+      storageKey: row.storage_key,
+      ...(row.preview_path ? { previewPath: row.preview_path } : {}),
+      ...(row.thumb_path ? { thumbPath: row.thumb_path } : {}),
+      publicUrl: row.public_url,
+      variants: variants as Record<string, string>,
+    };
+  }
 
   async list() {
-    const records = await this.databaseService.readEntity(this.entityName);
-    return records.map((record) => record.data as MediaRecord);
+    const [rows] = await this.databaseService.execute<MediaRow[]>(
+      `SELECT id, owner_id, original_name, mime_type, size, purpose, width, height, storage_key, preview_path, thumb_path, public_url, variants
+       FROM media ORDER BY created_at DESC`,
+    );
+    return rows.map((row) => this.mapRow(row));
   }
 
   async get(id: string) {
-    return (await this.databaseService.readRecord(this.entityName, id)) as MediaRecord | null;
+    const [rows] = await this.databaseService.execute<MediaRow[]>(
+      `SELECT id, owner_id, original_name, mime_type, size, purpose, width, height, storage_key, preview_path, thumb_path, public_url, variants
+       FROM media WHERE id = ? LIMIT 1`,
+      [id],
+    );
+    const row = rows[0];
+    return row ? this.mapRow(row) : null;
   }
 
   async create(payload: Record<string, unknown>) {
@@ -46,18 +91,59 @@ export class MediaRepository {
       publicUrl: String(payload.publicUrl ?? ''),
       variants: (payload.variants as Record<string, string>) ?? {},
     };
-    await this.databaseService.writeRecord(this.entityName, id, record);
+
+    await this.databaseService.execute(
+      `INSERT INTO media (id, owner_id, original_name, mime_type, size, purpose, width, height, storage_key, preview_path, thumb_path, public_url, variants)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        id,
+        record.ownerId || null,
+        record.originalName,
+        record.mimeType,
+        record.size,
+        payload.purpose ? String(payload.purpose) : null,
+        record.width,
+        record.height,
+        record.storageKey,
+        payload.previewPath ? String(payload.previewPath) : null,
+        payload.thumbPath ? String(payload.thumbPath) : null,
+        record.publicUrl,
+        toJsonColumn(record.variants),
+      ],
+    );
+
     return record;
   }
 
   async update(id: string, payload: Record<string, unknown>) {
-    const current = (await this.get(id)) as MediaRecord | null;
+    const current = await this.get(id);
     if (!current) {
       return null;
     }
 
     const next = { ...current, ...payload, id: current.id } as MediaRecord;
-    await this.databaseService.writeRecord(this.entityName, id, next);
+
+    await this.databaseService.execute(
+      `UPDATE media
+       SET owner_id = ?, original_name = ?, mime_type = ?, size = ?, purpose = ?, width = ?, height = ?, storage_key = ?, preview_path = ?, thumb_path = ?, public_url = ?, variants = ?, updated_at = CURRENT_TIMESTAMP
+       WHERE id = ?`,
+      [
+        next.ownerId || null,
+        next.originalName,
+        next.mimeType,
+        next.size,
+        next.purpose ?? null,
+        next.width,
+        next.height,
+        next.storageKey,
+        next.previewPath ?? null,
+        next.thumbPath ?? null,
+        next.publicUrl,
+        toJsonColumn(next.variants),
+        id,
+      ],
+    );
+
     return next;
   }
 }

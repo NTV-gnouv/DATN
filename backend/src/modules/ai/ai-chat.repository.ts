@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
+import { RowDataPacket } from 'mysql2/promise';
 
 import { DatabaseService } from '@/core/database/database.service';
+import { normalizeJsonPayload } from '@/core/database/json-payload.util';
 
 export type AiChatRole = 'assistant' | 'user';
 
@@ -40,11 +42,70 @@ export type AiChatSessionRecord = {
   updatedAt: string;
 };
 
+type AiChatRow = RowDataPacket & {
+  id: string;
+  user_id: string;
+  username: string;
+  page_id: string | null;
+  status: string;
+  current_step: number;
+  session_data: unknown;
+  created_at: Date;
+  updated_at: Date;
+};
+
 @Injectable()
 export class AiChatRepository {
-  private readonly entityName = 'ai-chat-sessions';
-
   constructor(private readonly databaseService: DatabaseService) {}
+
+  private mapRow(row: AiChatRow): AiChatSessionRecord {
+    const sessionData = normalizeJsonPayload(row.session_data);
+    return {
+      id: row.id,
+      userId: row.user_id,
+      username: row.username,
+      ...(row.page_id ? { pageId: row.page_id } : {}),
+      status: row.status as AiChatStatus,
+      currentStep: row.current_step,
+      createdAt: row.created_at.toISOString(),
+      updatedAt: row.updated_at.toISOString(),
+      ...sessionData,
+    } as AiChatSessionRecord;
+  }
+
+  private async writeSession(session: AiChatSessionRecord): Promise<void> {
+    const {
+      id,
+      userId,
+      username,
+      pageId,
+      status,
+      currentStep,
+      ...sessionData
+    } = session;
+
+    await this.databaseService.execute(
+      `INSERT INTO ai_chat_sessions (id, user_id, username, page_id, status, current_step, session_data)
+       VALUES (?, ?, ?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE
+         user_id = VALUES(user_id),
+         username = VALUES(username),
+         page_id = VALUES(page_id),
+         status = VALUES(status),
+         current_step = VALUES(current_step),
+         session_data = VALUES(session_data),
+         updated_at = CURRENT_TIMESTAMP`,
+      [
+        id,
+        userId,
+        username,
+        pageId ?? null,
+        status,
+        currentStep,
+        JSON.stringify(sessionData),
+      ],
+    );
+  }
 
   async create(userId: string, username: string, firstMessages: string[]): Promise<AiChatSessionRecord> {
     const now = new Date().toISOString();
@@ -65,16 +126,18 @@ export class AiChatRepository {
       updatedAt: now,
     };
 
-    await this.databaseService.writeRecord(this.entityName, id, session as unknown as Record<string, unknown>);
+    await this.writeSession(session);
     return session;
   }
 
   async get(sessionId: string): Promise<AiChatSessionRecord | null> {
-    const record = await this.databaseService.readRecord(this.entityName, sessionId);
-    if (!record) {
-      return null;
-    }
-    return record as unknown as AiChatSessionRecord;
+    const [rows] = await this.databaseService.execute<AiChatRow[]>(
+      `SELECT id, user_id, username, page_id, status, current_step, session_data, created_at, updated_at
+       FROM ai_chat_sessions WHERE id = ? LIMIT 1`,
+      [sessionId],
+    );
+    const row = rows[0];
+    return row ? this.mapRow(row) : null;
   }
 
   async save(session: AiChatSessionRecord): Promise<AiChatSessionRecord> {
@@ -82,7 +145,7 @@ export class AiChatRepository {
       ...session,
       updatedAt: new Date().toISOString(),
     };
-    await this.databaseService.writeRecord(this.entityName, nextSession.id, nextSession as unknown as Record<string, unknown>);
+    await this.writeSession(nextSession);
     return nextSession;
   }
 }

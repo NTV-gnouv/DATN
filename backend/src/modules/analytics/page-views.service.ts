@@ -81,19 +81,27 @@ export class PageViewsService {
     const rangeEnd = new Date(range.end);
     rangeEnd.setHours(23, 59, 59, 999);
 
-    const events = (await this.repository.listByPageId(pageId))
-      .filter((event) => isEventInDateRange(event.viewedAt, rangeStart, rangeEnd))
-      .sort((a, b) => a.viewedAt.localeCompare(b.viewedAt));
-
     const seriesGranularity = resolveSeriesGranularityForDayRange(range.start, range.end);
-    const series = this.buildBucketedSeries(events, range.start, range.end, seriesGranularity);
-    const countries = this.buildCountryBreakdown(events);
-    const devices = this.buildDeviceBreakdown(events);
+    const totalViews = await this.repository.countInRange(pageId, rangeStart, rangeEnd);
+    const countryRows = await this.repository.aggregateCountries(pageId, rangeStart, rangeEnd);
+    const deviceRows = await this.repository.aggregateDevices(pageId, rangeStart, rangeEnd);
+    const series = await this.buildSqlBucketedSeries(pageId, range.start, range.end, seriesGranularity);
+    const countries = countryRows.map((row) => ({
+      key: row.key,
+      label: getCountryLabel(row.key),
+      views: row.views,
+    }));
+    const devices = deviceRows.map((row) => ({
+      key: row.key,
+      label: getDeviceLabel(row.key as PageViewEvent['device']),
+      views: row.views,
+    }));
+    const latestSlug = await this.repository.getLatestSlug(pageId);
 
     return {
       pageId,
-      slug: slug || events[events.length - 1]?.slug || '',
-      totalViews: events.length,
+      slug: slug || latestSlug,
+      totalViews,
       startDate: formatDateKey(range.start),
       endDate: formatDateKey(range.end),
       seriesGranularity,
@@ -103,26 +111,82 @@ export class PageViewsService {
     };
   }
 
-  private async getHourlyOverview(pageId: string, slug = ''): Promise<PageAnalyticsOverview> {
-    const { start, end } = resolveRolling24HourRange();
+  private async buildSqlBucketedSeries(
+    pageId: string,
+    start: Date,
+    end: Date,
+    granularity: 'day' | 'week' | 'month',
+  ) {
+    if (granularity === 'day') {
+      const rangeStart = new Date(start);
+      rangeStart.setHours(0, 0, 0, 0);
+      const rangeEnd = new Date(end);
+      rangeEnd.setHours(23, 59, 59, 999);
+      const sqlSeries = await this.repository.aggregateDailySeries(pageId, rangeStart, rangeEnd);
+      const counts = new Map(sqlSeries.map((item) => [item.date, item.views]));
+      const cursor = new Date(start);
+      const output = [];
+
+      while (cursor <= end) {
+        const key = formatDateKey(cursor);
+        output.push({ date: key, views: counts.get(key) ?? 0 });
+        cursor.setDate(cursor.getDate() + 1);
+      }
+
+      return output;
+    }
+
     const events = (await this.repository.listByPageId(pageId))
-      .filter((event) => isEventInDateRange(event.viewedAt, start, end))
+      .filter((event) => isEventInDateRange(event.viewedAt, new Date(start), new Date(end)))
       .sort((a, b) => a.viewedAt.localeCompare(b.viewedAt));
 
-    const series = this.buildHourlySeries(events, start, end);
-    const countries = this.buildCountryBreakdown(events);
-    const devices = this.buildDeviceBreakdown(events);
+    return this.buildBucketedSeries(events, start, end, granularity);
+  }
+
+  private async getHourlyOverview(pageId: string, slug = ''): Promise<PageAnalyticsOverview> {
+    const { start, end } = resolveRolling24HourRange();
+    const totalViews = await this.repository.countInRange(pageId, start, end);
+    const countryRows = await this.repository.aggregateCountries(pageId, start, end);
+    const deviceRows = await this.repository.aggregateDevices(pageId, start, end);
+    const sqlSeries = await this.repository.aggregateHourlySeries(pageId, start, end);
+    const counts = new Map(sqlSeries.map((item) => [item.date, item.views]));
+    const rangeEnd = floorToHour(end);
+    const rangeStart = new Date(rangeEnd);
+    rangeStart.setHours(rangeStart.getHours() - 23);
+    const currentHourKey = formatHourKey(rangeEnd);
+    const cursor = new Date(rangeStart);
+    const series = [];
+
+    while (cursor <= rangeEnd) {
+      const key = formatHourKey(cursor);
+      series.push({
+        date: key,
+        views: counts.get(key) ?? 0,
+        partial: key === currentHourKey,
+      });
+      cursor.setHours(cursor.getHours() + 1);
+    }
+
+    const latestSlug = await this.repository.getLatestSlug(pageId);
 
     return {
       pageId,
-      slug: slug || events[events.length - 1]?.slug || '',
-      totalViews: events.length,
+      slug: slug || latestSlug,
+      totalViews,
       startDate: formatHourKey(floorToHour(start)),
       endDate: formatHourKey(floorToHour(end)),
       seriesGranularity: 'hour',
       series,
-      countries,
-      devices,
+      countries: countryRows.map((row) => ({
+        key: row.key,
+        label: getCountryLabel(row.key),
+        views: row.views,
+      })),
+      devices: deviceRows.map((row) => ({
+        key: row.key,
+        label: getDeviceLabel(row.key as PageViewEvent['device']),
+        views: row.views,
+      })),
     };
   }
 

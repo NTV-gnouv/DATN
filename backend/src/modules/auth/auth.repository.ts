@@ -1,49 +1,94 @@
 import { Injectable } from '@nestjs/common';
 import { compare, hashSync } from 'bcryptjs';
+import { RowDataPacket } from 'mysql2/promise';
+
 import { DatabaseService } from '@/core/database/database.service';
 
-type AuthUserRecord = {
+import { AuthUserRecord, PasswordResetRecord } from './auth.types';
+
+type AuthUserRow = RowDataPacket & {
   id: string;
   email: string;
   name: string;
   role: 'creator' | 'admin';
-  passwordHash: string;
-  onboardingCompleted?: boolean;
+  password_hash: string;
+  onboarding_completed: 0 | 1;
+  metadata: unknown;
+  created_at?: Date;
+  updated_at?: Date;
 };
 
-type PasswordResetRecord = {
-  userId: string;
+type PasswordResetRow = RowDataPacket & {
   token: string;
-  expiresAt: string;
+  user_id: string;
+  expires_at: Date;
 };
 
 @Injectable()
 export class AuthRepository {
+  private seedAdminPromise: Promise<void> | null = null;
+
   constructor(private readonly databaseService: DatabaseService) {}
 
-  private readonly entityName = 'auth-users';
-  private readonly refreshEntityName = 'auth-refresh-tokens';
-  private readonly passwordResetEntityName = 'auth-password-reset-tokens';
+  private mapUserRow(row: AuthUserRow): AuthUserRecord {
+    const metadata =
+      row.metadata && typeof row.metadata === 'object'
+        ? (row.metadata as Record<string, unknown>)
+        : undefined;
 
-  private async ensureSeedAdmin(): Promise<void> {
-    const records = await this.databaseService.readEntity(this.entityName);
-    const existing = records
-      .map((record) => record.data as AuthUserRecord)
-      .find((user) => user.email === 'admin@shotvn.local');
+    return {
+      id: row.id,
+      email: row.email,
+      name: row.name,
+      role: row.role,
+      passwordHash: row.password_hash,
+      onboardingCompleted: row.onboarding_completed === 1,
+      ...(metadata ? { metadata } : {}),
+      ...(row.created_at ? { createdAt: row.created_at.toISOString() } : {}),
+      ...(row.updated_at ? { updatedAt: row.updated_at.toISOString() } : {}),
+    };
+  }
+
+  private async queryUserByEmail(email: string): Promise<AuthUserRecord | null> {
+    const normalizedEmail = email.trim().toLowerCase();
+    const [rows] = await this.databaseService.execute<AuthUserRow[]>(
+      `SELECT id, email, name, role, password_hash, onboarding_completed, metadata, created_at, updated_at
+       FROM auth_users
+       WHERE email = ?
+       LIMIT 1`,
+      [normalizedEmail],
+    );
+
+    const row = rows[0];
+    return row ? this.mapUserRow(row) : null;
+  }
+
+  private async queryUserById(id: string): Promise<AuthUserRecord | null> {
+    const [rows] = await this.databaseService.execute<AuthUserRow[]>(
+      `SELECT id, email, name, role, password_hash, onboarding_completed, metadata, created_at, updated_at
+       FROM auth_users
+       WHERE id = ?
+       LIMIT 1`,
+      [id],
+    );
+
+    const row = rows[0];
+    return row ? this.mapUserRow(row) : null;
+  }
+
+  private async doEnsureSeedAdmin(): Promise<void> {
+    const existing = await this.queryUserByEmail('admin@shotvn.local');
     if (existing) {
       const passwordMatches = await compare('Admin@123', existing.passwordHash);
-      const nextAdmin: AuthUserRecord = {
-        ...existing,
-        role: 'admin',
-        onboardingCompleted: true,
-        ...(passwordMatches ? {} : { passwordHash: hashSync('Admin@123', 10) }),
-      };
-      if (
-        existing.role !== 'admin' ||
-        existing.onboardingCompleted !== true ||
-        !passwordMatches
-      ) {
-        await this.databaseService.writeRecord(this.entityName, existing.email, nextAdmin);
+      if (existing.role !== 'admin' || existing.onboardingCompleted !== true || !passwordMatches) {
+        await this.databaseService.execute(
+          `UPDATE auth_users
+           SET role = 'admin',
+               onboarding_completed = 1,
+               password_hash = ?
+           WHERE email = ?`,
+          [hashSync('Admin@123', 10), existing.email],
+        );
       }
       return;
     }
@@ -56,67 +101,86 @@ export class AuthRepository {
     });
   }
 
-  private normalizeUser(user: AuthUserRecord): AuthUserRecord {
-    return user;
+  private ensureSeedAdmin(): Promise<void> {
+    if (!this.seedAdminPromise) {
+      this.seedAdminPromise = this.doEnsureSeedAdmin();
+    }
+    return this.seedAdminPromise;
   }
 
-  async findRawByEmail(email: string) {
+  async findRawByEmail(email: string): Promise<AuthUserRecord | null> {
     await this.ensureSeedAdmin();
-    const records = await this.databaseService.readEntity(this.entityName);
-    return (
-      records
-        .map((record) => record.data as AuthUserRecord)
-        .find((item) => item.email === email) ?? null
-    );
+    return this.queryUserByEmail(email);
   }
 
-  async findRawById(id: string) {
+  async findRawById(id: string): Promise<AuthUserRecord | null> {
     await this.ensureSeedAdmin();
-    const records = await this.databaseService.readEntity(this.entityName);
-    return records.map((record) => record.data as AuthUserRecord).find((item) => item.id === id) ?? null;
+    return this.queryUserById(id);
   }
 
-  async findByEmail(email: string) {
-    await this.ensureSeedAdmin();
-    const records = await this.databaseService.readEntity(this.entityName);
-    const user =
-      records
-        .map((record) => record.data as AuthUserRecord)
-        .find((item) => item.email === email) ?? null;
-    return user ? this.normalizeUser(user) : null;
+  async findByEmail(email: string): Promise<AuthUserRecord | null> {
+    return this.findRawByEmail(email);
   }
 
-  async findById(id: string) {
-    await this.ensureSeedAdmin();
-    const records = await this.databaseService.readEntity(this.entityName);
-    const user = records.map((record) => record.data as AuthUserRecord).find((item) => item.id === id) ?? null;
-    return user ? this.normalizeUser(user) : null;
+  async findById(id: string): Promise<AuthUserRecord | null> {
+    return this.findRawById(id);
   }
 
-  async create(data: { email: string; name: string; passwordHash: string; role?: 'creator' | 'admin' }) {
+  async create(data: {
+    email: string;
+    name: string;
+    passwordHash: string;
+    role?: 'creator' | 'admin';
+  }): Promise<AuthUserRecord> {
+    const role = data.role ?? 'creator';
     const user: AuthUserRecord = {
       id: `u-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      email: data.email,
-      name: data.name,
-      role: data.role ?? 'creator',
+      email: data.email.trim().toLowerCase(),
+      name: data.name.trim(),
+      role,
       passwordHash: data.passwordHash,
-      onboardingCompleted: (data.role ?? 'creator') === 'admin',
+      onboardingCompleted: role === 'admin',
     };
-    await this.databaseService.writeRecord(this.entityName, user.email, user);
+
+    await this.databaseService.execute(
+      `INSERT INTO auth_users (id, email, name, role, password_hash, onboarding_completed)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [
+        user.id,
+        user.email,
+        user.name,
+        user.role,
+        user.passwordHash,
+        user.onboardingCompleted ? 1 : 0,
+      ],
+    );
+
     return user;
   }
 
   async saveRefreshToken(userId: string, refreshToken: string): Promise<void> {
-    await this.databaseService.writeRecord(this.refreshEntityName, userId, { userId, refreshToken });
+    await this.databaseService.execute(
+      `INSERT INTO auth_refresh_tokens (user_id, refresh_token)
+       VALUES (?, ?)
+       ON DUPLICATE KEY UPDATE
+         refresh_token = VALUES(refresh_token),
+         updated_at = CURRENT_TIMESTAMP`,
+      [userId, refreshToken],
+    );
   }
 
   async getRefreshToken(userId: string): Promise<string | null> {
-    const record = await this.databaseService.readRecord(this.refreshEntityName, userId);
-    return typeof record?.refreshToken === 'string' ? record.refreshToken : null;
+    const [rows] = await this.databaseService.execute<RowDataPacket[]>(
+      `SELECT refresh_token FROM auth_refresh_tokens WHERE user_id = ? LIMIT 1`,
+      [userId],
+    );
+
+    const token = rows[0]?.refresh_token;
+    return typeof token === 'string' ? token : null;
   }
 
   async revokeRefreshToken(userId: string): Promise<void> {
-    await this.databaseService.deleteRecord(this.refreshEntityName, userId);
+    await this.databaseService.execute(`DELETE FROM auth_refresh_tokens WHERE user_id = ?`, [userId]);
   }
 
   async updatePasswordHash(userId: string, passwordHash: string): Promise<AuthUserRecord | null> {
@@ -125,19 +189,40 @@ export class AuthRepository {
       return null;
     }
 
-    const next: AuthUserRecord = { ...user, passwordHash };
-    await this.databaseService.writeRecord(this.entityName, next.email, next);
-    return next;
+    await this.databaseService.execute(`UPDATE auth_users SET password_hash = ? WHERE id = ?`, [
+      passwordHash,
+      userId,
+    ]);
+
+    return { ...user, passwordHash };
   }
 
   async createPasswordResetToken(userId: string, token: string, expiresAt: string): Promise<void> {
-    const record: PasswordResetRecord = { userId, token, expiresAt };
-    await this.databaseService.writeRecord(this.passwordResetEntityName, token, record);
+    await this.databaseService.execute(
+      `INSERT INTO auth_password_reset_tokens (token, user_id, expires_at) VALUES (?, ?, ?)`,
+      [token, userId, expiresAt],
+    );
   }
 
   async findPasswordResetToken(token: string): Promise<PasswordResetRecord | null> {
-    const record = await this.databaseService.readRecord(this.passwordResetEntityName, token);
-    return record ? (record as PasswordResetRecord) : null;
+    const [rows] = await this.databaseService.execute<PasswordResetRow[]>(
+      `SELECT token, user_id, expires_at
+       FROM auth_password_reset_tokens
+       WHERE token = ?
+       LIMIT 1`,
+      [token],
+    );
+
+    const row = rows[0];
+    if (!row) {
+      return null;
+    }
+
+    return {
+      token: row.token,
+      userId: row.user_id,
+      expiresAt: row.expires_at.toISOString(),
+    };
   }
 
   async completeOnboarding(userId: string): Promise<AuthUserRecord | null> {
@@ -146,12 +231,14 @@ export class AuthRepository {
       return null;
     }
 
-    const next: AuthUserRecord = { ...user, onboardingCompleted: true };
-    await this.databaseService.writeRecord(this.entityName, next.email, next);
-    return next;
+    await this.databaseService.execute(`UPDATE auth_users SET onboarding_completed = 1 WHERE id = ?`, [
+      userId,
+    ]);
+
+    return { ...user, onboardingCompleted: true };
   }
 
   async deletePasswordResetToken(token: string): Promise<void> {
-    await this.databaseService.deleteRecord(this.passwordResetEntityName, token);
+    await this.databaseService.execute(`DELETE FROM auth_password_reset_tokens WHERE token = ?`, [token]);
   }
 }

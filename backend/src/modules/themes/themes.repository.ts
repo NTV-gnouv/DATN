@@ -1,5 +1,8 @@
 import { Injectable } from '@nestjs/common';
+import { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
+
 import { DatabaseService } from '@/core/database/database.service';
+import { normalizeJsonPayload, toJsonColumn } from '@/core/database/json-payload.util';
 import { ThemeConfig } from '@/shared/types/theme.types';
 
 export type ThemeRecord = {
@@ -22,13 +25,55 @@ export type ThemeRecord = {
   enabled: boolean;
 };
 
+type ThemeRow = RowDataPacket & {
+  id: string;
+  name: string;
+  version: string;
+  layout: string;
+  source_path: string;
+  preview: string | null;
+  description: string | null;
+  enabled: 0 | 1;
+  css_defaults: unknown;
+  theme_tokens: unknown;
+  field_schema: unknown;
+};
+
+type CustomThemeRow = RowDataPacket & {
+  id: string;
+  page_id: string;
+  name: string;
+  version: string;
+  is_default: 0 | 1;
+  is_active: 0 | 1;
+  config: unknown;
+  created_at: Date;
+  updated_at: Date;
+};
+
 @Injectable()
 export class ThemesRepository {
   constructor(private readonly databaseService: DatabaseService) {}
 
-  private readonly entityName = 'themes';
-  private readonly customThemeEntity = 'custom_themes';
   private readonly defaultThemeId = 'minimal';
+
+  private mapThemeRow(row: ThemeRow): ThemeRecord {
+    return {
+      id: row.id,
+      name: row.name,
+      version: row.version,
+      layout: row.layout,
+      sourcePath: row.source_path,
+      ...(row.preview ? { preview: row.preview } : {}),
+      ...(row.description ? { description: row.description } : {}),
+      enabled: row.enabled === 1,
+      ...(row.css_defaults ? { cssDefaults: normalizeJsonPayload(row.css_defaults) } : {}),
+      ...(row.theme_tokens ? { themeTokens: normalizeJsonPayload(row.theme_tokens) } : {}),
+      ...(row.field_schema
+        ? { fields: normalizeJsonPayload(row.field_schema) as unknown as ThemeRecord['fields'] }
+        : {}),
+    };
+  }
 
   private buildDefaultTheme(): ThemeRecord {
     return {
@@ -77,17 +122,40 @@ export class ThemesRepository {
     }
 
     const record = this.buildDefaultTheme();
-    await this.databaseService.writeRecord(this.entityName, record.id, record as unknown as Record<string, unknown>);
+    await this.databaseService.execute(
+      `INSERT INTO themes (id, name, version, layout, source_path, preview, description, enabled, css_defaults, field_schema)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
+      [
+        record.id,
+        record.name,
+        record.version,
+        record.layout,
+        record.sourcePath,
+        record.preview ?? null,
+        record.description ?? null,
+        toJsonColumn(record.cssDefaults ?? null),
+        toJsonColumn(record.fields ?? null),
+      ],
+    );
   }
 
   async list() {
     await this.ensureDefaultTheme();
-    const records = await this.databaseService.readEntity(this.entityName);
-    return records.map((record) => record.data as ThemeRecord);
+    const [rows] = await this.databaseService.execute<ThemeRow[]>(
+      `SELECT id, name, version, layout, source_path, preview, description, enabled, css_defaults, theme_tokens, field_schema
+       FROM themes ORDER BY name ASC`,
+    );
+    return rows.map((row) => this.mapThemeRow(row));
   }
 
   async get(id: string) {
-    return (await this.databaseService.readRecord(this.entityName, id)) as ThemeRecord | null;
+    const [rows] = await this.databaseService.execute<ThemeRow[]>(
+      `SELECT id, name, version, layout, source_path, preview, description, enabled, css_defaults, theme_tokens, field_schema
+       FROM themes WHERE id = ? LIMIT 1`,
+      [id],
+    );
+    const row = rows[0];
+    return row ? this.mapThemeRow(row) : null;
   }
 
   async getDefaultId() {
@@ -105,12 +173,18 @@ export class ThemesRepository {
       sourcePath: String(payload.sourcePath ?? ''),
       enabled: Boolean(payload.enabled ?? true),
     };
-    await this.databaseService.writeRecord(this.entityName, id, record);
+
+    await this.databaseService.execute(
+      `INSERT INTO themes (id, name, version, layout, source_path, enabled)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [id, record.name, record.version, record.layout, record.sourcePath, record.enabled ? 1 : 0],
+    );
+
     return record;
   }
 
   async update(id: string, payload: Record<string, unknown>) {
-    const current = (await this.get(id)) as ThemeRecord | null;
+    const current = await this.get(id);
     if (!current) {
       return null;
     }
@@ -120,20 +194,68 @@ export class ThemesRepository {
       ...payload,
       id: current.id,
     } as ThemeRecord;
-    await this.databaseService.writeRecord(this.entityName, id, next);
+
+    await this.databaseService.execute(
+      `UPDATE themes
+       SET name = ?, version = ?, layout = ?, source_path = ?, preview = ?, description = ?, enabled = ?, css_defaults = ?, theme_tokens = ?, field_schema = ?, updated_at = CURRENT_TIMESTAMP
+       WHERE id = ?`,
+      [
+        next.name,
+        next.version,
+        next.layout,
+        next.sourcePath,
+        next.preview ?? null,
+        next.description ?? null,
+        next.enabled ? 1 : 0,
+        toJsonColumn(next.cssDefaults ?? null),
+        toJsonColumn(next.themeTokens ?? null),
+        toJsonColumn(next.fields ?? null),
+        id,
+      ],
+    );
 
     return next;
   }
 
   async replaceAll(items: ThemeRecord[]): Promise<void> {
-    await Promise.all(items.map((item) => this.databaseService.writeRecord(this.entityName, item.id, item)));
+    for (const item of items) {
+      await this.databaseService.execute(
+        `INSERT INTO themes (id, name, version, layout, source_path, preview, description, enabled, css_defaults, theme_tokens, field_schema)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE
+           name = VALUES(name),
+           version = VALUES(version),
+           layout = VALUES(layout),
+           source_path = VALUES(source_path),
+           preview = VALUES(preview),
+           description = VALUES(description),
+           enabled = VALUES(enabled),
+           css_defaults = VALUES(css_defaults),
+           theme_tokens = VALUES(theme_tokens),
+           field_schema = VALUES(field_schema),
+           updated_at = CURRENT_TIMESTAMP`,
+        [
+          item.id,
+          item.name,
+          item.version,
+          item.layout,
+          item.sourcePath,
+          item.preview ?? null,
+          item.description ?? null,
+          item.enabled ? 1 : 0,
+          toJsonColumn(item.cssDefaults ?? null),
+          toJsonColumn(item.themeTokens ?? null),
+          toJsonColumn(item.fields ?? null),
+        ],
+      );
+    }
   }
 
   async remove(id: string): Promise<{ removed: boolean; id: string }> {
-    return { removed: await this.databaseService.deleteRecord(this.entityName, id), id };
+    const [result] = await this.databaseService.execute<ResultSetHeader>(`DELETE FROM themes WHERE id = ?`, [id]);
+    return { removed: result.affectedRows > 0, id };
   }
 
-  // Custom theme methods
   async createCustomTheme(themeConfig: ThemeConfig): Promise<ThemeConfig> {
     const id = `custom-theme-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const configData = {
@@ -142,19 +264,47 @@ export class ThemesRepository {
       createdAt: new Date(),
       updatedAt: new Date(),
     };
-    await this.databaseService.writeRecord(this.customThemeEntity, id, configData as unknown as Record<string, unknown>);
+
+    await this.databaseService.execute(
+      `INSERT INTO custom_themes (id, page_id, name, version, is_default, is_active, config)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [
+        id,
+        themeConfig.pageId,
+        themeConfig.name,
+        themeConfig.version,
+        themeConfig.isDefault ? 1 : 0,
+        themeConfig.isActive ? 1 : 0,
+        JSON.stringify(configData),
+      ],
+    );
+
     return configData;
   }
 
   async getCustomTheme(id: string): Promise<ThemeConfig | null> {
-    return (await this.databaseService.readRecord(this.customThemeEntity, id)) as ThemeConfig | null;
+    const [rows] = await this.databaseService.execute<CustomThemeRow[]>(
+      `SELECT id, page_id, name, version, is_default, is_active, config, created_at, updated_at
+       FROM custom_themes WHERE id = ? LIMIT 1`,
+      [id],
+    );
+    const row = rows[0];
+    if (!row) {
+      return null;
+    }
+
+    const config = normalizeJsonPayload(row.config) as unknown as ThemeConfig;
+    return config;
   }
 
   async listCustomThemesByPage(pageId: string): Promise<ThemeConfig[]> {
-    const records = await this.databaseService.readEntity(this.customThemeEntity);
-    return records
-      .map((record) => record.data as ThemeConfig)
-      .filter((theme) => theme.pageId === pageId);
+    const [rows] = await this.databaseService.execute<CustomThemeRow[]>(
+      `SELECT id, page_id, name, version, is_default, is_active, config, created_at, updated_at
+       FROM custom_themes WHERE page_id = ? ORDER BY updated_at DESC`,
+      [pageId],
+    );
+
+    return rows.map((row) => normalizeJsonPayload(row.config) as unknown as ThemeConfig);
   }
 
   async updateCustomTheme(id: string, updates: Partial<ThemeConfig>): Promise<ThemeConfig | null> {
@@ -171,11 +321,29 @@ export class ThemesRepository {
       createdAt: current.createdAt,
       updatedAt: new Date(),
     };
-    await this.databaseService.writeRecord(this.customThemeEntity, id, updated as unknown as Record<string, unknown>);
+
+    await this.databaseService.execute(
+      `UPDATE custom_themes
+       SET name = ?, version = ?, is_default = ?, is_active = ?, config = ?, updated_at = CURRENT_TIMESTAMP
+       WHERE id = ?`,
+      [
+        updated.name,
+        updated.version,
+        updated.isDefault ? 1 : 0,
+        updated.isActive ? 1 : 0,
+        JSON.stringify(updated),
+        id,
+      ],
+    );
+
     return updated;
   }
 
   async deleteCustomTheme(id: string): Promise<boolean> {
-    return await this.databaseService.deleteRecord(this.customThemeEntity, id);
+    const [result] = await this.databaseService.execute<ResultSetHeader>(
+      `DELETE FROM custom_themes WHERE id = ?`,
+      [id],
+    );
+    return result.affectedRows > 0;
   }
 }

@@ -1,6 +1,10 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { hashSync } from 'bcryptjs';
-import { createPool, Pool, RowDataPacket, ResultSetHeader } from 'mysql2/promise';
+import { createPool, FieldPacket, Pool, PoolConnection, RowDataPacket, ResultSetHeader } from 'mysql2/promise';
+import type { ExecuteValues } from 'mysql2/promise';
+
+import { AuthSchemaService } from './auth-schema.service';
+import { normalizeJsonPayload } from './json-payload.util';
+import { RelationalSchemaService } from './relational-schema.service';
 
 type StoredRecordRow = RowDataPacket & {
   record_id: string;
@@ -16,36 +20,56 @@ type EntityTable = {
 export class DatabaseService implements OnModuleInit {
   private readonly logger = new Logger(DatabaseService.name);
   private pool: Pool | null = null;
+  private readonly authSchemaService = new AuthSchemaService();
+  private readonly relationalSchemaService = new RelationalSchemaService();
   private readonly entityTables: EntityTable[] = [
-    { entity: 'auth-users', tableName: 'auth_users' },
-    { entity: 'auth-refresh-tokens', tableName: 'auth_refresh_tokens' },
-    { entity: 'auth-password-reset-tokens', tableName: 'auth_password_reset_tokens' },
-    { entity: 'users', tableName: 'users' },
-    { entity: 'pages', tableName: 'pages' },
-    { entity: 'blocks', tableName: 'blocks' },
-    { entity: 'themes', tableName: 'themes' },
-    { entity: 'custom_themes', tableName: 'custom_themes' },
-    { entity: 'plugins', tableName: 'plugins' },
-    { entity: 'contact-forms', tableName: 'contact_forms' },
-    { entity: 'contact-form-submissions', tableName: 'contact_form_submissions' },
-    { entity: 'media', tableName: 'media' },
-    { entity: 'email-logs', tableName: 'email_logs' },
-    { entity: 'analytics', tableName: 'analytics' },
-    { entity: 'page-view-events', tableName: 'page_view_events' },
     { entity: 'admin', tableName: 'admin_records' },
-    { entity: 'onboarding_sessions', tableName: 'onboarding_sessions' },
-    { entity: 'ai-chat-sessions', tableName: 'ai_chat_sessions' },
+    { entity: 'analytics', tableName: 'analytics' },
   ];
 
   async onModuleInit(): Promise<void> {
-    await this.getPool();
+    const pool = await this.getPool();
+    await this.authSchemaService.ensureSchema(pool);
+    await this.relationalSchemaService.ensureSchema(pool);
     await this.ensureSchema();
-    await this.seedInitialData();
+  }
+
+  async execute<T extends RowDataPacket[] | ResultSetHeader>(
+    sql: string,
+    params: ExecuteValues = [],
+  ): Promise<[T, FieldPacket[]]> {
+    if (this.activeConnection) {
+      return this.activeConnection.execute<T>(sql, params);
+    }
+
+    const pool = await this.getPool();
+    return pool.execute<T>(sql, params);
   }
 
   async transaction<T>(cb: () => Promise<T>): Promise<T> {
-    return cb();
+    return this.withTransaction(async () => cb());
   }
+
+  async withTransaction<T>(cb: () => Promise<T>): Promise<T> {
+    const pool = await this.getPool();
+    const connection = await pool.getConnection();
+
+    try {
+      await connection.beginTransaction();
+      this.activeConnection = connection;
+      const result = await cb();
+      await connection.commit();
+      return result;
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      this.activeConnection = null;
+      connection.release();
+    }
+  }
+
+  private activeConnection: PoolConnection | null = null;
 
   async readEntity(entity: string): Promise<Array<{ id: string; data: Record<string, unknown> }>> {
     const pool = await this.getPool();
@@ -128,70 +152,11 @@ export class DatabaseService implements OnModuleInit {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
       `);
     }
-    this.logger.log('MySQL entity tables schema ensured');
-  }
-
-  private async seedInitialData(): Promise<void> {
-    const pool = await this.getPool();
-    const seeds: Array<{ entity: string; recordId: string; payload: Record<string, unknown> }> = [
-      {
-        entity: 'auth-users',
-        recordId: 'admin@shotvn.local',
-        payload: {
-          id: 'u-admin',
-          email: 'admin@shotvn.local',
-          name: 'System Admin',
-          role: 'admin',
-          onboardingCompleted: true,
-          passwordHash: hashSync('Admin@123', 10),
-        },
-      },
-      {
-        entity: 'users',
-        recordId: 'u-demo',
-        payload: { id: 'u-demo', name: 'Demo User', role: 'creator' },
-      },
-      {
-        entity: 'pages',
-        recordId: 'p-demo',
-        payload: { id: 'p-demo', title: 'My Landing Page', slug: 'my-landing-page', username: 'demo', status: 'draft' },
-      },
-      {
-        entity: 'themes',
-        recordId: 'theme-demo',
-        payload: { id: 'theme-demo', name: 'Minimal Theme', version: '1.0.0', enabled: true },
-      },
-      {
-        entity: 'plugins',
-        recordId: 'plugin-demo',
-        payload: { id: 'plugin-demo', name: 'Hero Block', version: '1.0.0', type: 'block', enabled: true },
-      },
-    ];
-
-    for (const seed of seeds) {
-      const tableName = this.getTableName(seed.entity);
-      await pool.execute(
-        `INSERT IGNORE INTO ${tableName} (record_id, payload) VALUES (?, ?)`,
-        [seed.recordId, JSON.stringify(seed.payload)],
-      );
-    }
-    this.logger.log('MySQL seed data ensured');
+    this.logger.log('MySQL legacy JSON tables schema ensured');
   }
 
   private normalizePayload(payload: unknown): Record<string, unknown> {
-    if (typeof payload === 'string') {
-      try {
-        return JSON.parse(payload) as Record<string, unknown>;
-      } catch {
-        return { value: payload };
-      }
-    }
-
-    if (payload && typeof payload === 'object') {
-      return payload as Record<string, unknown>;
-    }
-
-    return {};
+    return normalizeJsonPayload(payload);
   }
 
   private getTableName(entity: string): string {

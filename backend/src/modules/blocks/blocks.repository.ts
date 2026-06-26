@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
+import { RowDataPacket } from 'mysql2/promise';
 
 import { DatabaseService } from '@/core/database/database.service';
+import { normalizeJsonPayload, toJsonColumn } from '@/core/database/json-payload.util';
 
 export type HeaderBlockRecord = {
   id: string;
@@ -13,10 +15,10 @@ export type HeaderBlockRecord = {
       avatarUrl: string;
       displayName: string;
       bio: string;
-          avatarShape: 'circle' | 'square';
-          avatarDisplayStyle?: 'circle' | 'square' | 'arched' | 'ring' | 'horizontal';
-          avatarSize: number;
-          displayNameSize?: number;
+      avatarShape: 'circle' | 'square';
+      avatarDisplayStyle?: 'circle' | 'square' | 'arched' | 'ring' | 'horizontal';
+      avatarSize: number;
+      displayNameSize?: number;
     };
     theme: {
       defaultThemeId: string;
@@ -88,14 +90,40 @@ export type HeaderBlockRecord = {
   updatedAt: string;
 };
 
+type BlockDefinitionRow = RowDataPacket & {
+  id: string;
+  block_type: string;
+  name: string;
+  version: string;
+  plugin_id: string | null;
+  is_default: 0 | 1;
+  default_data: unknown;
+  source: string | null;
+  created_at: Date;
+  updated_at: Date;
+};
+
 @Injectable()
 export class BlocksRepository {
   constructor(private readonly databaseService: DatabaseService) {}
 
-  private readonly entityName = 'blocks';
   private readonly defaultHeaderBlockId = 'block-header-default';
-
   private readonly socialPlatforms = ['TikTok', 'Instagram', 'YouTube', 'X'];
+
+  private mapDefinitionRow(row: BlockDefinitionRow): Record<string, unknown> {
+    const defaultData = normalizeJsonPayload(row.default_data);
+    return {
+      id: row.id,
+      type: row.block_type,
+      name: row.name,
+      version: row.version,
+      isDefault: row.is_default === 1,
+      fields: defaultData.fields ?? defaultData,
+      ...(row.source ? { source: row.source } : {}),
+      createdAt: row.created_at?.toISOString?.(),
+      updatedAt: row.updated_at?.toISOString?.(),
+    };
+  }
 
   private normalizeId(value: string) {
     return value
@@ -201,17 +229,31 @@ export class BlocksRepository {
     }
 
     const record = this.buildDefaultHeaderBlock();
-    await this.databaseService.writeRecord(this.entityName, record.id, record as unknown as Record<string, unknown>);
+    await this.databaseService.execute(
+      `INSERT INTO block_definitions (id, block_type, name, version, is_default, default_data)
+       VALUES (?, 'header', ?, ?, 1, ?)`,
+      [record.id, record.name, record.version, JSON.stringify({ fields: record.fields })],
+    );
   }
 
   async list() {
     await this.ensureDefaultHeaderBlock();
-    const records = await this.databaseService.readEntity(this.entityName);
-    return records.map((record) => ({ id: record.id, ...(record.data as Record<string, unknown>) }));
+    const [rows] = await this.databaseService.execute<BlockDefinitionRow[]>(
+      `SELECT id, block_type, name, version, plugin_id, is_default, default_data, source, created_at, updated_at
+       FROM block_definitions
+       ORDER BY updated_at DESC`,
+    );
+    return rows.map((row) => this.mapDefinitionRow(row));
   }
 
   async get(id: string) {
-    return this.databaseService.readRecord(this.entityName, id);
+    const [rows] = await this.databaseService.execute<BlockDefinitionRow[]>(
+      `SELECT id, block_type, name, version, plugin_id, is_default, default_data, source, created_at, updated_at
+       FROM block_definitions WHERE id = ? LIMIT 1`,
+      [id],
+    );
+    const row = rows[0];
+    return row ? this.mapDefinitionRow(row) : null;
   }
 
   async getDefaultId() {
@@ -226,7 +268,6 @@ export class BlocksRepository {
 
   async create(payload: Record<string, unknown>) {
     const id = `block-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    const now = new Date().toISOString();
     const record = {
       id,
       type: String(payload.type ?? 'custom'),
@@ -234,11 +275,23 @@ export class BlocksRepository {
       version: String(payload.version ?? '1.0.0'),
       isDefault: Boolean(payload.isDefault ?? false),
       fields: (payload.fields ?? {}) as Record<string, unknown>,
-      createdAt: now,
-      updatedAt: now,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
 
-    await this.databaseService.writeRecord(this.entityName, id, record);
+    await this.databaseService.execute(
+      `INSERT INTO block_definitions (id, block_type, name, version, is_default, default_data)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [
+        id,
+        record.type,
+        record.name,
+        record.version,
+        record.isDefault ? 1 : 0,
+        JSON.stringify({ fields: record.fields }),
+      ],
+    );
+
     return record;
   }
 
@@ -256,7 +309,6 @@ export class BlocksRepository {
       id = `${baseId}-${Math.random().toString(36).slice(2, 6)}`;
     }
 
-    const now = new Date().toISOString();
     const record = {
       id,
       type: String(source.type ?? 'custom'),
@@ -265,16 +317,21 @@ export class BlocksRepository {
       isDefault: false,
       fields: (source.fields ?? {}) as Record<string, unknown>,
       source: 'import',
-      createdAt: now,
-      updatedAt: now,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
 
-    await this.databaseService.writeRecord(this.entityName, id, record);
+    await this.databaseService.execute(
+      `INSERT INTO block_definitions (id, block_type, name, version, is_default, default_data, source)
+       VALUES (?, ?, ?, ?, 0, ?, 'import')`,
+      [id, record.type, record.name, record.version, JSON.stringify({ fields: record.fields })],
+    );
+
     return record;
   }
 
   async update(id: string, payload: Record<string, unknown>) {
-    const current = await this.get(id);
+    const current = (await this.get(id)) as Record<string, unknown> | null;
     if (!current) {
       return null;
     }
@@ -284,9 +341,22 @@ export class BlocksRepository {
       ...payload,
       id,
       updatedAt: new Date().toISOString(),
-    };
+    } as Record<string, unknown>;
 
-    await this.databaseService.writeRecord(this.entityName, id, next as Record<string, unknown>);
+    await this.databaseService.execute(
+      `UPDATE block_definitions
+       SET block_type = ?, name = ?, version = ?, is_default = ?, default_data = ?, updated_at = CURRENT_TIMESTAMP
+       WHERE id = ?`,
+      [
+        String(next.type ?? current.type),
+        String(next.name ?? current.name),
+        String(next.version ?? current.version),
+        next.isDefault === true ? 1 : 0,
+        toJsonColumn({ fields: next.fields ?? current.fields }),
+        id,
+      ],
+    );
+
     return next;
   }
 }

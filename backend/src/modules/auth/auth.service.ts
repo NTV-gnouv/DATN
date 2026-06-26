@@ -7,20 +7,13 @@ import { EmailService } from '../notifications/email.service';
 import { PagesService } from '../pages/pages.service';
 
 import { hasConfiguredThemeTokens } from './auth-onboarding.util';
+import { AuthUserRecord } from './auth.types';
 import { AuthRepository } from './auth.repository';
 
 type JwtPayload = {
   sub: string;
   email: string;
   role: string;
-};
-
-type AuthUserRecord = {
-  id: string;
-  email: string;
-  name: string;
-  role: 'creator' | 'admin';
-  onboardingCompleted?: boolean;
 };
 
 @Injectable()

@@ -1,11 +1,39 @@
 import { ConflictException, Injectable } from '@nestjs/common';
+import { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
+
 import { DatabaseService } from '@/core/database/database.service';
+import { resolveBlockReferences } from '@/core/database/block-reference.util';
+import { normalizeJsonPayload, toJsonColumn } from '@/core/database/json-payload.util';
+
+type PageRow = RowDataPacket & {
+  id: string;
+  title: string;
+  slug: string;
+  username: string;
+  owner_id: string | null;
+  theme_id: string;
+  status: string;
+  template: string;
+  theme_tokens: unknown;
+  header_block_id: string | null;
+  editor_config: unknown;
+  created_at: Date;
+  updated_at: Date;
+};
+
+type PageBlockRow = RowDataPacket & {
+  id: string;
+  page_id: string;
+  block_type: string;
+  sort_order: number;
+  visible: 0 | 1;
+  data: unknown;
+};
 
 @Injectable()
 export class PagesRepository {
   constructor(private readonly databaseService: DatabaseService) {}
 
-  private readonly entityName = 'pages';
   private readonly defaultThemeId = 'minimal';
 
   private normalizeThemeId(value: unknown): string {
@@ -27,6 +55,37 @@ export class PagesRepository {
       .slice(0, 80) || 'page';
   }
 
+  private mapPageRow(row: PageRow, blocks: Record<string, unknown>[]): Record<string, unknown> {
+    const editorConfig = normalizeJsonPayload(row.editor_config);
+    const themeTokens = row.theme_tokens ?? editorConfig.themeTokens ?? null;
+
+    return {
+      id: row.id,
+      title: row.title,
+      slug: row.slug,
+      username: row.username,
+      ...(row.owner_id ? { ownerId: row.owner_id } : {}),
+      themeId: this.normalizeThemeId(row.theme_id),
+      status: row.status,
+      template: row.template,
+      blocks,
+      themeTokens,
+      editorConfig: Object.keys(editorConfig).length > 0 ? editorConfig : undefined,
+      createdAt: row.created_at?.toISOString?.() ?? undefined,
+      updatedAt: row.updated_at?.toISOString?.() ?? undefined,
+    };
+  }
+
+  private mapBlockRow(row: PageBlockRow): Record<string, unknown> {
+    const data = normalizeJsonPayload(row.data);
+    return {
+      id: row.id,
+      type: row.block_type,
+      visible: row.visible === 1,
+      ...data,
+    };
+  }
+
   private normalizeContentBlock(block: Record<string, unknown>, index: number): Record<string, unknown> {
     const type = String(block.type ?? 'block');
     if (type === 'header') {
@@ -39,18 +98,6 @@ export class PagesRepository {
       id,
       visible: block.visible !== false,
     };
-  }
-
-  private normalizePageRecord(page: Record<string, unknown>): Record<string, unknown> {
-    if (!Array.isArray(page.blocks)) {
-      return page;
-    }
-
-    const blocks = (page.blocks as Array<Record<string, unknown>>).map((block, index) =>
-      this.normalizeContentBlock(block, index),
-    );
-
-    return { ...page, blocks };
   }
 
   private mergeHeaderIntoBlocks(current: Record<string, unknown>, incomingBlocks: Array<Record<string, unknown>>) {
@@ -66,9 +113,96 @@ export class PagesRepository {
     return headerBlock ? [headerBlock, ...contentBlocks] : contentBlocks;
   }
 
+  async listBlocksByType(pageId: string, blockType: string): Promise<Record<string, unknown>[]> {
+    const [rows] = await this.databaseService.execute<PageBlockRow[]>(
+      `SELECT id, page_id, block_type, sort_order, visible, data
+       FROM page_blocks
+       WHERE page_id = ? AND block_type = ?
+       ORDER BY sort_order ASC`,
+      [pageId, blockType],
+    );
+    return rows.map((row) => this.mapBlockRow(row));
+  }
+
+  async countBlocksByType(pageId: string, blockType: string): Promise<number> {
+    const [rows] = await this.databaseService.execute<RowDataPacket[]>(
+      `SELECT COUNT(*) AS total FROM page_blocks WHERE page_id = ? AND block_type = ?`,
+      [pageId, blockType],
+    );
+    return Number(rows[0]?.total ?? 0);
+  }
+
+  private async loadBlocks(pageId: string): Promise<Record<string, unknown>[]> {
+    const [rows] = await this.databaseService.execute<PageBlockRow[]>(
+      `SELECT id, page_id, block_type, sort_order, visible, data
+       FROM page_blocks
+       WHERE page_id = ?
+       ORDER BY sort_order ASC`,
+      [pageId],
+    );
+
+    return rows.map((row) => this.mapBlockRow(row));
+  }
+
+  private async saveBlocks(pageId: string, blocks: Array<Record<string, unknown>>): Promise<void> {
+    await this.databaseService.withTransaction(async () => {
+      await this.databaseService.execute(`DELETE FROM page_blocks WHERE page_id = ?`, [pageId]);
+
+      for (let index = 0; index < blocks.length; index += 1) {
+        const block = this.normalizeContentBlock(blocks[index], index);
+        const blockId = String(block.id ?? `${pageId}-block-${index}`);
+        const blockType = String(block.type ?? 'custom');
+        const { id: _id, type: _type, visible, ...rest } = block;
+        const refs = resolveBlockReferences(blockType, rest);
+
+        await this.databaseService.execute(
+          `INSERT INTO page_blocks (id, page_id, block_type, definition_id, ref_entity, ref_id, sort_order, visible, data)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            blockId,
+            pageId,
+            blockType,
+            refs.definitionId,
+            refs.refEntity,
+            refs.refId,
+            index,
+            block.visible === false ? 0 : 1,
+            JSON.stringify(rest),
+          ],
+        );
+      }
+    });
+  }
+
+  private async loadPage(pageId: string): Promise<Record<string, unknown> | null> {
+    const [rows] = await this.databaseService.execute<PageRow[]>(
+      `SELECT id, title, slug, username, owner_id, theme_id, status, template, theme_tokens, header_block_id, editor_config, created_at, updated_at
+       FROM pages WHERE id = ? LIMIT 1`,
+      [pageId],
+    );
+
+    const row = rows[0];
+    if (!row) {
+      return null;
+    }
+
+    const blocks = await this.loadBlocks(pageId);
+    return this.mapPageRow(row, blocks);
+  }
+
   private async readAllPages() {
-    const records = await this.databaseService.readEntity(this.entityName);
-    return records.map((record) => ({ id: record.id, ...(record.data as Record<string, unknown>) })) as any[];
+    const [rows] = await this.databaseService.execute<PageRow[]>(
+      `SELECT id, title, slug, username, owner_id, theme_id, status, template, theme_tokens, header_block_id, editor_config, created_at, updated_at
+       FROM pages
+       ORDER BY updated_at DESC`,
+    );
+
+    const pages: Record<string, unknown>[] = [];
+    for (const row of rows) {
+      const blocks = await this.loadBlocks(row.id);
+      pages.push(this.mapPageRow(row, blocks));
+    }
+    return pages;
   }
 
   private buildTemplate(payload: Record<string, unknown>) {
@@ -93,26 +227,35 @@ export class PagesRepository {
 
   async findBySlug(slug: string) {
     const nextSlug = this.normalizeSlug(slug);
-    const pages = await this.readAllPages();
-    return pages.find((page: any) => this.normalizeSlug(String(page.slug ?? '')) === nextSlug) ?? null;
+    const [rows] = await this.databaseService.execute<PageRow[]>(
+      `SELECT id FROM pages WHERE slug = ? LIMIT 1`,
+      [nextSlug],
+    );
+    const row = rows[0];
+    return row ? this.loadPage(row.id) : null;
   }
 
   async findByUsername(username: string) {
     const nextUsername = this.normalizeSlug(username);
-    const pages = await this.readAllPages();
-    return pages.find((page: any) => this.normalizeSlug(String(page.username ?? '')) === nextUsername) ?? null;
+    const [rows] = await this.databaseService.execute<PageRow[]>(
+      `SELECT id FROM pages WHERE username = ? LIMIT 1`,
+      [nextUsername],
+    );
+    const row = rows[0];
+    return row ? this.loadPage(row.id) : null;
   }
 
   async isSlugAvailable(slug: string, excludeId?: string) {
     const nextSlug = this.normalizeSlug(slug);
-    const pages = await this.readAllPages();
-    return !pages.some((page: any) => {
-      if (excludeId && page.id === excludeId) {
-        return false;
-      }
-
-      return this.normalizeSlug(String(page.slug ?? '')) === nextSlug;
-    });
+    const [rows] = await this.databaseService.execute<RowDataPacket[]>(
+      `SELECT id FROM pages WHERE slug = ? LIMIT 1`,
+      [nextSlug],
+    );
+    const existing = rows[0];
+    if (!existing) {
+      return true;
+    }
+    return Boolean(excludeId && existing.id === excludeId);
   }
 
   async create(payload: Record<string, unknown>) {
@@ -121,8 +264,26 @@ export class PagesRepository {
       throw new ConflictException('Slug đã tồn tại');
     }
 
-    await this.databaseService.writeRecord(this.entityName, record.id, record);
-    return record;
+    await this.databaseService.execute(
+      `INSERT INTO pages (id, title, slug, username, owner_id, theme_id, status, template)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        record.id,
+        record.title,
+        record.slug,
+        record.username,
+        record.ownerId ?? null,
+        record.themeId,
+        record.status,
+        record.template,
+      ],
+    );
+
+    if (Array.isArray(record.blocks) && record.blocks.length > 0) {
+      await this.saveBlocks(record.id, record.blocks as Array<Record<string, unknown>>);
+    }
+
+    return (await this.loadPage(record.id)) ?? record;
   }
 
   async list() {
@@ -130,12 +291,14 @@ export class PagesRepository {
   }
 
   async get(id: string) {
-    const record = (await this.databaseService.readRecord(this.entityName, id)) ?? {
-      id,
-      title: 'My Landing Page',
-      slug: 'my-landing-page',
-    };
-    return this.normalizePageRecord(record as Record<string, unknown>);
+    const page = await this.loadPage(id);
+    return (
+      page ?? {
+        id,
+        title: 'My Landing Page',
+        slug: 'my-landing-page',
+      }
+    );
   }
 
   async getBySlug(slug: string) {
@@ -143,7 +306,7 @@ export class PagesRepository {
     if (!page) {
       return { slug: this.normalizeSlug(slug), title: 'Không tìm thấy trang đích', status: 'missing' };
     }
-    return this.normalizePageRecord(page as Record<string, unknown>);
+    return page;
   }
 
   async getByUsername(username: string) {
@@ -151,7 +314,7 @@ export class PagesRepository {
     if (!page) {
       return { username: this.normalizeSlug(username), title: 'Không tìm thấy trang theo tài khoản', status: 'missing' };
     }
-    return this.normalizePageRecord(page as Record<string, unknown>);
+    return page;
   }
 
   async update(id: string, payload: Record<string, unknown>) {
@@ -168,9 +331,34 @@ export class PagesRepository {
       );
     }
 
-    const next = this.normalizePageRecord({ ...current, ...nextPayload, id });
-    await this.databaseService.writeRecord(this.entityName, id, next);
-    return next;
+    const merged = { ...current, ...nextPayload, id } as Record<string, unknown>;
+    const themeId = this.normalizeThemeId(merged.themeId);
+    const editorConfig = (merged.editorConfig as Record<string, unknown> | undefined) ?? {};
+
+    await this.databaseService.execute(
+      `UPDATE pages
+       SET title = ?, slug = ?, username = ?, owner_id = ?, theme_id = ?, status = ?, template = ?, theme_tokens = ?, header_block_id = ?, editor_config = ?, updated_at = CURRENT_TIMESTAMP
+       WHERE id = ?`,
+      [
+        String(merged.title ?? 'My Landing Page'),
+        this.normalizeSlug(String(merged.slug ?? id)),
+        String(merged.username ?? ''),
+        merged.ownerId ? String(merged.ownerId) : null,
+        themeId,
+        String(merged.status ?? 'draft'),
+        String(merged.template ?? 'starter'),
+        toJsonColumn(merged.themeTokens ?? null),
+        String(editorConfig.headerBlockId ?? merged.headerBlockId ?? 'block-header-default'),
+        toJsonColumn(editorConfig),
+        id,
+      ],
+    );
+
+    if (Array.isArray(merged.blocks)) {
+      await this.saveBlocks(id, merged.blocks as Array<Record<string, unknown>>);
+    }
+
+    return this.get(id);
   }
 
   async updateSlug(id: string, slug: string) {
@@ -181,15 +369,12 @@ export class PagesRepository {
       throw new ConflictException('Slug đã tồn tại');
     }
 
-    const next = {
-      ...current,
+    await this.databaseService.execute(`UPDATE pages SET slug = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [
+      nextSlug,
       id,
-      slug: nextSlug,
-      updatedAt: new Date().toISOString(),
-    };
+    ]);
 
-    await this.databaseService.writeRecord(this.entityName, id, next);
-    return next;
+    return { ...current, id, slug: nextSlug, updatedAt: new Date().toISOString() };
   }
 
   async updateSlugByUsername(username: string, slug: string) {
@@ -197,26 +382,23 @@ export class PagesRepository {
     const existing = (await this.findByUsername(normalizedUsername)) as Record<string, unknown> | null;
 
     if (!existing) {
-      const created = this.buildTemplate({
+      return this.create({
         title: `Landing page ${normalizedUsername}`,
         username: normalizedUsername,
         slug,
       });
-
-      if (!(await this.isSlugAvailable(String(created.slug), created.id))) {
-        throw new ConflictException('Slug đã tồn tại');
-      }
-
-      await this.databaseService.writeRecord(this.entityName, String(created.id), created as Record<string, unknown>);
-      return created;
     }
 
     return this.updateSlug(String(existing.id), slug);
   }
 
   async findByOwnerId(ownerId: string) {
-    const pages = await this.readAllPages();
-    return pages.find((page: any) => String(page.ownerId ?? '') === ownerId) ?? null;
+    const [rows] = await this.databaseService.execute<PageRow[]>(
+      `SELECT id FROM pages WHERE owner_id = ? LIMIT 1`,
+      [ownerId],
+    );
+    const row = rows[0];
+    return row ? this.loadPage(row.id) : null;
   }
 
   async findForAccount(user: { id?: string; name: string; email: string }) {
@@ -261,8 +443,10 @@ export class PagesRepository {
     return {
       pageId: id,
       themeId: this.normalizeThemeId(editorConfig.themeId ?? page.themeId),
-      // include persisted themeTokens if present so editor can load per-page theme overrides
-      themeTokens: (editorConfig.themeTokens as Record<string, unknown> | undefined) ?? (page.themeTokens as Record<string, unknown> | undefined) ?? null,
+      themeTokens:
+        (editorConfig.themeTokens as Record<string, unknown> | undefined) ??
+        (page.themeTokens as Record<string, unknown> | undefined) ??
+        null,
       headerBlockId: String(editorConfig.headerBlockId ?? 'block-header-default'),
       headerBlock: (editorConfig.headerBlock as Record<string, unknown> | undefined) ?? firstHeaderBlock ?? null,
     };
@@ -283,42 +467,39 @@ export class PagesRepository {
 
     const filteredBlocks = currentBlocks.filter((block) => String(block.type ?? '') !== 'header');
     const nextBlocks = nextHeaderBlock ? [nextHeaderBlock, ...filteredBlocks] : filteredBlocks;
-
-    // ensure we preserve any existing editorConfig values
     const editorConfig = (current.editorConfig as Record<string, unknown> | undefined) ?? {};
 
-    const next = {
-      ...current,
-      themeId: nextThemeId,
-      blocks: nextBlocks,
-      // Persist themeTokens if provided so published page uses the same tokens
-      themeTokens: payload.themeTokens ?? current.themeTokens ?? null,
-      editorConfig: {
-        themeId: nextThemeId,
-        headerBlockId: nextHeaderBlockId,
-        headerBlock: nextHeaderBlock,
-        themeTokens: payload.themeTokens ?? (editorConfig.themeTokens as Record<string, unknown> | undefined) ?? null,
-      },
-      id,
-      updatedAt: new Date().toISOString(),
-    };
+    await this.databaseService.execute(
+      `UPDATE pages
+       SET theme_id = ?, theme_tokens = ?, header_block_id = ?, editor_config = ?, updated_at = CURRENT_TIMESTAMP
+       WHERE id = ?`,
+      [
+        nextThemeId,
+        toJsonColumn(payload.themeTokens ?? current.themeTokens ?? null),
+        nextHeaderBlockId,
+        toJsonColumn({
+          themeId: nextThemeId,
+          headerBlockId: nextHeaderBlockId,
+          themeTokens: payload.themeTokens ?? editorConfig.themeTokens ?? null,
+        }),
+        id,
+      ],
+    );
 
-    await this.databaseService.writeRecord(this.entityName, id, next);
+    await this.saveBlocks(id, nextBlocks);
+
     return this.getEditorConfig(id);
   }
 
   async createTemplate(payload: Record<string, unknown>) {
-    const record = this.buildTemplate({ ...payload, template: payload.template ?? 'starter' });
-    if (!(await this.isSlugAvailable(String(record.slug), record.id))) {
-      throw new ConflictException('Slug đã tồn tại');
-    }
-
-    await this.databaseService.writeRecord(this.entityName, record.id, record);
-    return record;
+    return this.create({ ...payload, template: payload.template ?? 'starter' });
   }
 
   async remove(id: string) {
-    const removed = await this.databaseService.deleteRecord(this.entityName, id);
-    return { id, removed };
+    const [result] = await this.databaseService.execute<ResultSetHeader>(
+      `DELETE FROM pages WHERE id = ?`,
+      [id],
+    );
+    return { id, removed: result.affectedRows > 0 };
   }
 }
