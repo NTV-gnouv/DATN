@@ -1,0 +1,35 @@
+{
+  "id": "minimal",
+  "name": "Minimal Theme",
+  "preview": "preview.svg",
+  "version": "1.0.0",
+  "description": "Default minimal theme used by the editor.",
+  "cssDefaults": {
+    "colors": {
+      "headerTextAndIcon": "#0f172a",
+      "socialBlockBackground": "#ffffff",
+      "socialBlockText": "#0f172a",
+      "contentBlockBackground": "#ffffff",
+      "contentBlockText": "#0f172a",
+      "contentBlockButton": "#111827"
+    },
+    "divLayout": {
+      "widthPercent": 92,
+      "border": { "width": 1, "style": "solid", "color": "#e6eef9", "radius": 8 },
+      "boxShadow": { "enabled": true, "x": 0, "y": 6, "blur": 18, "spread": 0, "color": "rgba(16,24,40,0.06)" }
+    },
+    "typography": { "fontFamily": "Inter" }
+  },
+  "fields": [
+    { "key": "typography.fontFamily", "type": "font-select", "label": "Font chữ", "options": ["Inter","Roboto","Poppins","Montserrat","Lora","Playfair Display","Noto Sans","System"] },
+    { "key": "divLayout.widthPercent", "type": "number", "label": "Chiều ngang (%)" },
+    { "key": "divLayout.border.width", "type": "number", "label": "Chiều rộng border (px)" },
+    { "key": "divLayout.border.color", "type": "color", "label": "Màu border" },
+    { "key": "divLayout.border.radius", "type": "number", "label": "Border radius" },
+    { "key": "divLayout.boxShadow.enabled", "type": "boolean", "label": "Shadow mặc định theo theme" },
+    { "key": "colors.headerTextAndIcon", "type": "color", "label": "Tiêu đề & biểu tượng" },
+    { "key": "colors.socialBlockBackground", "type": "color", "label": "Nền khối social" },
+    { "key": "colors.socialBlockText", "type": "color", "label": "Chữ khối social" }
+  ],
+  "layout": "single-column"
+}

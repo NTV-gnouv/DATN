@@ -1,0 +1,51 @@
+{
+  "id": "retro-win95",
+  "name": "Retro Win95",
+  "preview": "preview.svg",
+  "version": "1.0.0",
+  "description": "Giao diện Windows 95 — nền teal, panel bạc và viền 3D (themeskill/theme2).",
+  "themeTokens": {
+    "typography": {
+      "fontFamily": "Silkscreen",
+      "displayFont": "Silkscreen",
+      "bodyFont": "Silkscreen"
+    },
+    "effects": {
+      "backgroundEffectClassName": "theme-surface-win95",
+      "backgroundEffectCss": "",
+      "interactionCss": ".theme-surface-win95 .phone-content-card:active { border-color: #808080 #ffffff #ffffff #808080 !important; }"
+    },
+    "review": { "fontSize": 13 }
+  },
+  "cssDefaults": {
+    "colors": {
+      "headerTextAndIcon": "#000000",
+      "socialBlockBackground": "#C0C0C0",
+      "socialBlockText": "#000000",
+      "contentBlockBackground": "#C0C0C0",
+      "contentBlockText": "#000000",
+      "contentBlockButton": "#000080"
+    },
+    "divLayout": {
+      "widthPercent": 94,
+      "border": { "width": 2, "style": "solid", "color": "#FFFFFF", "radius": 0 },
+      "boxShadow": { "enabled": false, "x": 0, "y": 0, "blur": 0, "spread": 0, "color": "transparent" }
+    },
+    "typography": { "fontFamily": "Silkscreen" }
+  },
+  "fields": [
+    { "key": "typography.fontFamily", "type": "font-select", "label": "Font chữ", "options": ["Silkscreen", "IBM Plex Mono", "Inter", "Roboto", "System"] },
+    { "key": "divLayout.widthPercent", "type": "number", "label": "Chiều ngang (%)" },
+    { "key": "divLayout.border.width", "type": "number", "label": "Chiều rộng border (px)" },
+    { "key": "divLayout.border.color", "type": "color", "label": "Màu border" },
+    { "key": "divLayout.border.radius", "type": "number", "label": "Border radius" },
+    { "key": "divLayout.boxShadow.enabled", "type": "boolean", "label": "Shadow mặc định theo theme" },
+    { "key": "colors.headerTextAndIcon", "type": "color", "label": "Tiêu đề & biểu tượng" },
+    { "key": "colors.socialBlockBackground", "type": "color", "label": "Nền khối social" },
+    { "key": "colors.socialBlockText", "type": "color", "label": "Chữ khối social" },
+    { "key": "colors.contentBlockBackground", "type": "color", "label": "Nền khối nội dung" },
+    { "key": "colors.contentBlockText", "type": "color", "label": "Chữ khối nội dung" },
+    { "key": "colors.contentBlockButton", "type": "color", "label": "Màu nút / accent" }
+  ],
+  "layout": "single-column"
+}

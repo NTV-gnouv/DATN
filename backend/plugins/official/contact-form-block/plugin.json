@@ -1,0 +1,7 @@
+{
+  "name": "contact-form-block",
+  "version": "1.0.0",
+  "type": "block",
+  "entry": "backend/main.js",
+  "permissions": ["contact-forms.read", "contact-forms.write", "media.upload"]
+}

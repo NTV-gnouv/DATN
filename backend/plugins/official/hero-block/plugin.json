@@ -1,0 +1,7 @@
+{
+  "name": "hero-block",
+  "version": "1.0.0",
+  "type": "block",
+  "entry": "backend/main.js",
+  "permissions": ["media.read"]
+}

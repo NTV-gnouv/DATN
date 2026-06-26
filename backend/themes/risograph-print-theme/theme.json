@@ -1,0 +1,51 @@
+{
+  "id": "risograph-print",
+  "name": "Risograph Print",
+  "preview": "preview.svg",
+  "version": "1.0.0",
+  "description": "Phong cách in risograph — giấy kem, hồng neon và bóng offset xanh (themeskill/theme3).",
+  "themeTokens": {
+    "typography": {
+      "fontFamily": "Space Grotesk",
+      "displayFont": "Space Grotesk",
+      "bodyFont": "Space Grotesk"
+    },
+    "effects": {
+      "backgroundEffectClassName": "theme-surface-riso",
+      "backgroundEffectCss": "",
+      "interactionCss": ".theme-surface-riso .phone-content-card { transition: transform 120ms ease-out, box-shadow 120ms ease-out; } .theme-surface-riso .phone-content-card:hover { transform: translate(-2px, -2px); }"
+    },
+    "review": { "fontSize": 15 }
+  },
+  "cssDefaults": {
+    "colors": {
+      "headerTextAndIcon": "#2C3FA7",
+      "socialBlockBackground": "#FBF6EC",
+      "socialBlockText": "#637EC2",
+      "contentBlockBackground": "#FBF6EC",
+      "contentBlockText": "#637EC2",
+      "contentBlockButton": "#F237A1"
+    },
+    "divLayout": {
+      "widthPercent": 92,
+      "border": { "width": 1, "style": "solid", "color": "#E4E0D9", "radius": 4 },
+      "boxShadow": { "enabled": true, "x": 4, "y": 4, "blur": 0, "spread": 0, "color": "#2C3FA7" }
+    },
+    "typography": { "fontFamily": "Space Grotesk" }
+  },
+  "fields": [
+    { "key": "typography.fontFamily", "type": "font-select", "label": "Font chữ", "options": ["Space Grotesk", "Inter", "Roboto", "Poppins", "Montserrat", "Noto Sans", "System"] },
+    { "key": "divLayout.widthPercent", "type": "number", "label": "Chiều ngang (%)" },
+    { "key": "divLayout.border.width", "type": "number", "label": "Chiều rộng border (px)" },
+    { "key": "divLayout.border.color", "type": "color", "label": "Màu border" },
+    { "key": "divLayout.border.radius", "type": "number", "label": "Border radius" },
+    { "key": "divLayout.boxShadow.enabled", "type": "boolean", "label": "Shadow mặc định theo theme" },
+    { "key": "colors.headerTextAndIcon", "type": "color", "label": "Tiêu đề & biểu tượng" },
+    { "key": "colors.socialBlockBackground", "type": "color", "label": "Nền khối social" },
+    { "key": "colors.contentBlockText", "type": "color", "label": "Chữ khối nội dung" },
+    { "key": "colors.contentBlockBackground", "type": "color", "label": "Nền khối nội dung" },
+    { "key": "colors.contentBlockButton", "type": "color", "label": "Màu nút / accent" },
+    { "key": "colors.socialBlockText", "type": "color", "label": "Chữ khối social" }
+  ],
+  "layout": "single-column"
+}

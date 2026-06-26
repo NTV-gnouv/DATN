@@ -1,0 +1,14 @@
+[
+  { "key": "typography.fontFamily", "type": "font-select", "label": "Font chữ", "options": ["Inter", "Roboto", "Poppins", "Montserrat", "Lora", "Playfair Display", "Noto Sans", "Delius Swash Caps", "Silkscreen", "Space Grotesk", "System"] },
+  { "key": "divLayout.widthPercent", "type": "number", "label": "Chiều ngang (%)" },
+  { "key": "divLayout.border.width", "type": "number", "label": "Chiều rộng border (px)" },
+  { "key": "divLayout.border.color", "type": "color", "label": "Màu border" },
+  { "key": "divLayout.border.radius", "type": "number", "label": "Border radius" },
+  { "key": "divLayout.boxShadow.enabled", "type": "boolean", "label": "Shadow mặc định theo theme" },
+  { "key": "colors.headerTextAndIcon", "type": "color", "label": "Tiêu đề & biểu tượng" },
+  { "key": "colors.socialBlockBackground", "type": "color", "label": "Nền khối social" },
+  { "key": "colors.socialBlockText", "type": "color", "label": "Chữ khối social" },
+  { "key": "colors.contentBlockBackground", "type": "color", "label": "Nền khối nội dung" },
+  { "key": "colors.contentBlockText", "type": "color", "label": "Chữ khối nội dung" },
+  { "key": "colors.contentBlockButton", "type": "color", "label": "Màu nút / accent" }
+]
